@@ -29,7 +29,7 @@ class OverrideFunction_Init_TestCase(unittest.testcase):
 		
 		comp.execute()
 		
-		self.assertTrue(np.close(comp.ind, np.array([80, 1782, 674])))
+		self.assertTrue(np.allclose(comp.ind, np.array([80, 1782, 674])))
 		
 	def test_init_3route(self):
 		inputs = load_data_file(self.data_dir, 'inputs_before_3routes.mat')
@@ -61,12 +61,12 @@ class OverrideFunction_Init_TestCase(unittest.testcase):
 		constants = load_data_file(self.data_dir, 'constants_after_3routes.mat')
 		constants = constants['constants']
 		
-		self.assertTrue(np.close(comp.RVector_out, inputs.RVector))
-		self.assertTrue(np.close(comp.AvailPax, inputs.AvailPax))
-		self.assertTrue(np.close(comp.TurnAround, inputs.TurnAround))
-		self.assertTrue(np.close(comp.J, 3))
-		self.assertTrue(np.close(comp.K, 2))
-		self.assertTrue(np.close(compLim, inputs.Lim))
+		self.assertTrue(np.allclose(comp.RVector_out, inputs.RVector))
+		self.assertTrue(np.allclose(comp.AvailPax, inputs.AvailPax))
+		self.assertTrue(np.allclose(comp.TurnAround, inputs.TurnAround))
+		self.assertTrue(np.allclose(comp.J, 3))
+		self.assertTrue(np.allclose(comp.K, 2))
+		self.assertTrue(np.allclose(compLim, inputs.Lim))
 
 class ArrayFilterTestCase(unittest.TestCase):
 	def test_3routes(self):
@@ -89,27 +89,27 @@ class ArrayFilterTestCase(unittest.TestCase):
 		#TicketPrice
 		comp.original = inputs_before.TicketPrice
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, inputs_after.TicketPrice))
+		self.assertTrue(np.allclose(comp.filtered, inputs_after.TicketPrice))
 		
 		#Fuelburn
 		comp.original = coefficients_before.Fuelburn
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.TicketPrice))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.TicketPrice))
 		
 		#Doc
 		comp.original = coefficients_before.Doc
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.Doc))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.Doc))
 		
 		#Nox
 		comp.original = coefficients_before.Nox
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.Nox))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.Nox))
 		
 		#BlockTime
 		comp.original = coefficients_before.BlockTime
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.BlockTime))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.BlockTime))
 		
 	def test_11routes(self):
 		inputs_before = load_data_file(self.data_dir, 'inputs_before_11routes.mat')
@@ -134,27 +134,27 @@ class ArrayFilterTestCase(unittest.TestCase):
 		#TicketPrice
 		comp.original = inputs_before.TicketPrice
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, inputs_after.TicketPrice))
+		self.assertTrue(np.allclose(comp.filtered, inputs_after.TicketPrice))
 		
 		#Fuelburn
 		comp.original = coefficients_before.Fuelburn
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.TicketPrice))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.TicketPrice))
 		
 		#Doc
 		comp.original = coefficients_before.Doc
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.Doc))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.Doc))
 		
 		#Nox
 		comp.original = coefficients_before.Nox
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.Nox))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.Nox))
 		
 		#BlockTime
 		comp.original = coefficients_before.BlockTime
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.BlockTime))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.BlockTime))
 		
 	def test_31routes(self):
 		inputs_before = load_data_file(self.data_dir, 'inputs_before_31routes.mat')
@@ -184,27 +184,27 @@ class ArrayFilterTestCase(unittest.TestCase):
 		#TicketPrice
 		comp.original = inputs_before.TicketPrice
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, inputs_after.TicketPrice))
+		self.assertTrue(np.allclose(comp.filtered, inputs_after.TicketPrice))
 		
 		#Fuelburn
 		comp.original = coefficients_before.Fuelburn
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.TicketPrice))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.TicketPrice))
 		
 		#Doc
 		comp.original = coefficients_before.Doc
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.Doc))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.Doc))
 		
 		#Nox
 		comp.original = coefficients_before.Nox
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.Nox))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.Nox))
 		
 		#BlockTime
 		comp.original = coefficients_before.BlockTime
 		comp.execute()
-		self.assertTrue(np.close(comp.filtered, coefficients_after.BlockTime))
+		self.assertTrue(np.allclose(comp.filtered, coefficients_after.BlockTime))
 	
 class MaxTripTestCase(unittest.TestCase):
 	
@@ -228,7 +228,7 @@ class MaxTripTestCase(unittest.TestCase):
 		
 		comp.execute()
 		
-		self.assertTrue(np.close(comp.MaxTrip, inputs_after.MaxTrip))
+		self.assertTrue(np.allclose(comp.MaxTrip, inputs_after.MaxTrip))
 		
         # add some tests here...
 		
@@ -252,7 +252,7 @@ class MaxTripTestCase(unittest.TestCase):
 		
 		comp.execute()
 		
-		self.assertTrue(np.close(comp.MaxTrip, inputs_after.MaxTrip))
+		self.assertTrue(np.allclose(comp.MaxTrip, inputs_after.MaxTrip))
 		
 	def test_31routes(self):
 		inputs_after = load_data_file(self.data_dir, 'inputs_after_3routes.mat')
@@ -274,7 +274,7 @@ class MaxTripTestCase(unittest.TestCase):
 		
 		comp.execute()
 		
-		self.assertTrue(np.close(comp.MaxTrip, inputs_after.MaxTrip))
+		self.assertTrue(np.allclose(comp.MaxTrip, inputs_after.MaxTrip))
     
 
 if __name__ == "__main__":
