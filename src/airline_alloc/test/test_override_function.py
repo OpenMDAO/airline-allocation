@@ -82,13 +82,8 @@ class ArrayFilterTestCase(unittest.TestCase):
 		coefficients_after = load_data_file(self.data_dir, 'coefficients_after_3routes.mat')
 		coefficients_after = mat_file['Coefficients'] 
 		
-		range_extract = RangeExtract()
-		range_extract.RVector = inputs.RVector
-		range_extract.distance = np.array([2000, 1500, 1000])
-		range_extract.execute()
-		
 		comp = ArrayFilter()
-		comp.route_ind = range_extrax.ind
+		comp.route_ind = np.array([80,1782,674])
 		comp.ac_ind = np.array([9,10])
 		
 		#TicketPrice
@@ -129,16 +124,11 @@ class ArrayFilterTestCase(unittest.TestCase):
 		coefficients_after = load_data_file(self.data_dir, 'coefficients_after_11routes.mat')
 		coefficients_after = mat_file['Coefficients'] 
 		
-		range_extract = RangeExtract()
-		range_extract.RVector = inputs.RVector
-		range_extract.distance = np.array([
-			162,753,974,1094,
-			1357,1455, 2169,2249,
-			2269,2337,2350])
-		range_extract.execute()
-		
 		comp = ArrayFilter()
-		comp.route_ind = range_extrax.ind
+		comp.route_ind = np.array([
+			394,1598,410,2042,
+			615,742,427,1501,
+			1308,414,1317])
 		comp.ac_ind = np.array([9,10])
 		
 		#TicketPrice
@@ -179,19 +169,16 @@ class ArrayFilterTestCase(unittest.TestCase):
 		coefficients_after = load_data_file(self.data_dir, 'coefficients_after_31routes.mat')
 		coefficients_after = mat_file['Coefficients'] 
 		
-		range_extract = RangeExtract()
-		range_extract.RVector = inputs.RVector
-		range_extract.distance = np.array([
-			113,174,289,303,324,
-			331,342,375,407,427,
-			484,486,531,543,550,
-			570,594,609,622,680,
-			747,758,760,823,837,
-			991,1098,1231,1407,1570,1626])
-		range_extract.execute()
-		
 		comp = ArrayFilter()
-		comp.route_ind = range_extrax.ind
+		comp.route_ind = np.array([
+			1483,1045,1944,1856,
+			754,1463,1718,948,
+			416,1801,1795,225,
+			845,919,840,1746,
+			1739,1797,1947,1987,
+			1429,1802,2060,1897,
+			1410,1241,971,1399,
+			1597,2028,1433])
 		comp.ac_ind = np.array([6,10,4,9,3,8])
 		
 		#TicketPrice
@@ -234,7 +221,7 @@ class MaxTripTestCase(unittest.TestCase):
 		comp = MaxTrip_3Routes()
 		comp.J = 3
 		comp.K = 2
-		comp.ACNum = inputs_before.ACNum
+		comp.ACNum = inputs_after.ACNum
 		comp.BlockTime = coefficients_after.BlockTime
 		comp.MH = constants_after.MH
 		comp.TurnAround = inputs_after.TurnAround
@@ -243,20 +230,52 @@ class MaxTripTestCase(unittest.TestCase):
 		
 		self.assertTrue(np.close(comp.MaxTrip, inputs_after.MaxTrip))
 		
-        
-
-    # add some tests here...
-
+        # add some tests here...
+		
+	def test_11routes(self):
+		inputs_after = load_data_file(self.data_dir, 'inputs_after_3routes.mat')
+		inputs_after = mat_file['Inputs']
+		
+		coefficients_after = load_data_file(self.data_dir, 'coefficients_after_3routes.mat')
+		coefficients_after = mat_file['Coefficients']
+		
+		constants_after = load_data_file(self.data_dir, 'constants_after_3routes.mat')
+		constants_after = mat_file['Constants']
+		
+		comp = MaxTrip_3Routes()
+		comp.J = 3
+		comp.K = 2
+		comp.ACNum = inputs_after.ACNum
+		comp.BlockTime = coefficients_after.BlockTime
+		comp.MH = constants_after.MH
+		comp.TurnAround = inputs_after.TurnAround
+		
+		comp.execute()
+		
+		self.assertTrue(np.close(comp.MaxTrip, inputs_after.MaxTrip))
+		
+	def test_31routes(self):
+		inputs_after = load_data_file(self.data_dir, 'inputs_after_3routes.mat')
+		inputs_after = mat_file['Inputs']
+		
+		coefficients_after = load_data_file(self.data_dir, 'coefficients_after_3routes.mat')
+		coefficients_after = mat_file['Coefficients']
+		
+		constants_after = load_data_file(self.data_dir, 'constants_after_3routes.mat')
+		constants_after = mat_file['Constants']
+		
+		comp = MaxTrip_3Routes()
+		comp.J = 11
+		comp.K = 2
+		comp.ACNum = inputs_after.ACNum
+		comp.BlockTime = coefficients_after.BlockTime
+		comp.MH = constants_after.MH
+		comp.TurnAround = inputs_after.TurnAround
+		
+		comp.execute()
+		
+		self.assertTrue(np.close(comp.MaxTrip, inputs_after.MaxTrip))
     
-	def test_override_function_init(self):
-		comp = OverrideFunction_Init()
-		comp.ac_ind = np.array([9, 10])
-		comp.distance = np.array([2
-    #def test_Airline_alloc(self):
-
-        #pass
-
-        
 
 if __name__ == "__main__":
 
