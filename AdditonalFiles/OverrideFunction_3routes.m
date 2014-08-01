@@ -8,15 +8,12 @@ function [Inputs,Outputs,Constants,Coefficients] = OverrideFunction_3routes(Inpu
     Inputs.DVector = [[1:3]',[300;700;220]]; %Route demand
     Inputs.ACNum = [6;4]; %Number of aircraft 
 %%
-    route_ind = range_extract(Inputs,distance);
-	disp("route_ind:"), disp(route_ind)
+    route_ind = range_extract(Inputs,distance)
     Inputs.RVector = Inputs.RVector(route_ind);
     Inputs.AvailPax = Inputs.AvailPax(ac_ind); 
     Inputs.TurnAround = 1; 
-    J = length(Inputs.DVector(:,2));   %Number of routes              
-	disp("J:"), disp(J)
-    K = length(Inputs.AvailPax);        % Number of Aircraft types
-	disp("K:"), disp(K)
+    J = length(Inputs.DVector(:,2))   %Number of routes              
+    K = length(Inputs.AvailPax)       % Number of Aircraft types
     Inputs.Lim = ones(K,J);
     
     Constants.Runway = 1e4.*length(Inputs.RVector);
