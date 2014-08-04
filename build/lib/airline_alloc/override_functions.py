@@ -1,4 +1,4 @@
-__all__ = ['ArrayFilter', 'RangeExtract', 'Initialization', 'MaxTrip_3Routes', 'MaxTrip_11Routes', 'MaxTrip_31Routes']
+__all__ = ['Airline_alloc']
 
 import numpy as np
 
@@ -14,19 +14,17 @@ class ArrayFilter(Component):
 	filtered = Array(iotype='out')
 	
 	def execute(self):
-		array_out = np.array([])
+		array_out = np.empty()
 		temp_in = self.original
 		
-		for kk in xrange(len(self.ac_ind)):
-			ta = np.array([])
+		for kk, kk_value in np.ndenuerate(array):
+			ta = np.empty();
 			
-			for jj in xrange(len(self.route_ind)):
-				ta = np.append(ta, temp_in[self.ac_ind[kk], self.route_ind[jj]])
-				
-			array_out = np.append(array_out, ta)
-		
-		array_out = array_out.reshape(len(self.ac_ind), -1)
-		
+			for jj, jj_value in np.ndenumerate(array):
+				ta = np.concatenate(ta, temp_in[ac_ind[kk], route_ind[jj]])
+			
+			array_out = np.concatenate(array_out, ta)
+			
 		self.filtered = array_out
 
 class RangeExtract(Component):
@@ -36,20 +34,20 @@ class RangeExtract(Component):
 	ind = Array(iotype='out')
 	
 	def execute(self):
-		self.ind = np.zeros(len(self.distance))
+		ind = np.zeros(len(self.distance))
 		
 		for cc in xrange(len(self.distance)):
 			_range = self.distance[cc]
-			diff_min = np.inf
+			diff_min = inf
 			
 			for ii, ii_value in np.ndenumerate(self.RVector):
 				diff = np.abs(ii_value - _range)
 				if diff < diff_min:
 					
-					self.ind[cc] = ii[0]
-					diff_min = diff
+				ind[cc] = ii[0]
+				diff_min = diff
 				
-class Initialization(Component):
+class OverrideFunction_Init(Component):
 	ac_ind = Array(iotype='in', desc='aircraft indices')
 	distance = Array(iotype='in', desc='route distance')
 	DVector = Array(iotype='in', desc='route demand')
@@ -58,47 +56,46 @@ class Initialization(Component):
 	AvailPax_in = Array(iotype='in')
 	route_ind = Array(iotype='in', desc='route indices')
 	MH_in = Array(iotype='in')
-	TurnAround = Int(iotype='in')
-	demfac = Int(iotype='in')
-	FuelCost = Float(iotype='in')
 	
 	#Filtered Inputs
 	RVector_out = Array(iotype='out')
 	AvailPax_out = Array(iotype='out')
-	J = Int(iotype='out', desc="Number of routes")
-	K = Int(iotype='out', desc="Number of aircraft types")
+	TurnAround = Int(iotype='out')
+	J = Array(iotype='out', desc="Number of routes")
+	K = Array(iotype='out', desc="Number of aircraft types")
 	Lim = Array(iotype='out')
 	
 	#Constants
 	Runway_out = Array(iotype='out')
 	MH_out = Array(iotype='out')
+	FuelCost = Float(iotype='out')
+	demfac = Int(iotype='out')
 	
 	def execute(self):
 		self.RVector_out = self.RVector_in[self.route_ind]
 		self.AvailPax_out = self.AvailPax_in[self.ac_ind]
 		self.TurnAround = 1
-		
-		self.J = len(self.DVector[:,1])
+		self.J = len(self.DVector[:,2]
 		self.K = len(self.AvailPax_out)
-		self.Lim = np.ones((self.K, self.J))
+		self.Lim = np.ones(self.K, self.J)
 		
 		self.Runway = 1e4 * len(self.RVector_out)
 		self.MH_out = self.MH_in[self.ac_ind]
 		self.FuelCost = 0.2431
 		self.demfac = 1
 		
-class MaxTrip_3Routes(Component):
+class MaxTrip_3Route(Component):
 	J = Int(iotype='in')
 	K = Int(iotype='in')
 	ACNum = Array(iotype='in')
 	BlockTime = Array(iotype='in')
 	MH = Array(iotype='in')
-	TurnAround = Int(iotype='in')
+	TurnAround = Array(iotype='in')
 	
 	MaxTrip = Array(iotype='out')
 	
 	def execute(self):
-		rw = 0
+		rw = 1
 		max_trip = np.zeros(self.K*self.J)
 		
 		for kk in range(self.K):
@@ -108,18 +105,18 @@ class MaxTrip_3Routes(Component):
 				
 		self.MaxTrip = max_trip
 
-class MaxTrip_11Routes(Component):
+class MaxTrip_11Route(Component):
 	J = Int(iotype='in')
 	K = Int(iotype='in')
 	ACNum = Array(iotype='in')
 	BlockTime = Array(iotype='in')
 	MH = Array(iotype='in')
-	TurnAround = Int(iotype='in')
+	TurnAround = Array(iotype='in')
 	
 	MaxTrip = Array(iotype='out')
 	
 	def execute(self):
-		rw = 0
+		rw = 1
 		max_trip = np.zeros(self.K*self.J)
 		
 		for kk in range(self.K):
@@ -129,18 +126,18 @@ class MaxTrip_11Routes(Component):
 				
 		self.MaxTrip = max_trip
 
-class MaxTrip_31Routes(Component):
+class MaxTrip_31Route(Component):
 	J = Int(iotype='in')
 	K = Int(iotype='in')
 	ACNum = Array(iotype='in')
 	BlockTime = Array(iotype='in')
 	MH = Array(iotype='in')
-	TurnAround = Int(iotype='in')
+	TurnAround = Array(iotype='in')
 	
 	MaxTrip = Array(iotype='out')
 	
 	def execute(self):
-		rw = 0
+		rw = 1
 		max_trip = np.zeros(self.K*self.J)
 		
 		for kk in range(self.K):
@@ -149,3 +146,32 @@ class MaxTrip_31Routes(Component):
 				rw = rw + 1
 				
 		self.MaxTrip = max_trip
+		
+# Make sure that your class has some kind of docstring. Otherwise
+
+# the descriptions for your variables won't show up in the
+
+# source ducumentation.
+
+
+class Airline_alloc(Component):
+
+    """
+
+    """
+
+    # declare inputs and outputs here, for example:
+
+    #x = Float(0.0, iotype='in', desc='description for x')
+
+    #y = Float(0.0, iotype='out', desc='description for y')
+
+
+
+    def execute(self):
+
+        """ do your calculations here """
+
+        pass
+
+        
