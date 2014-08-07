@@ -154,12 +154,13 @@ def gomory_cut(x, A, b, Aeq, beq):
 
     # Generate the Simplex optimal tableau
     aaa = np.where(np.subtract(x_up, 0.) > 1e-06)
-    rows = Acom.shape[0]
-    cols = len(aaa[0])
+    cols = Acom.shape[0]
+    rows = len(aaa[0])
     B = np.zeros((rows, cols))
     for ii in range(cols):
         for jj in range(rows):
             B[jj, aaa[ii]] = Acom[jj, aaa[ii]]
+
     tab = np.concatenate((np.linalg.solve(B, Acom), np.linalg.solve(B, bcom)), axis=1)
 
     # Generate cut
@@ -173,6 +174,9 @@ def gomory_cut(x, A, b, Aeq, beq):
     max_rem = 0
     for ii in aa[0]:  # rows in tab with fractional part
         rems = np.remainder(np.abs(tab[ii, :]), 1)
+        # FIXME: remainder of 1.0/1  = 1.0  ????  (replace with 0)
+        aa = np.where(abs(rems - 1.0) <= 1e-08)
+        rems[aa] = 0
         if rems.max() > max_rem:
             max_rem = rems.max()
             rw_sel = ii
@@ -231,36 +235,40 @@ def gomory_cut(x, A, b, Aeq, beq):
 
 
 def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int):
-    num_con = len(x) - num_int
-    x_trip = x[1:num_int]
-    pax = x[num_int + 1:x.shape[0]]
+    num_con = x.size - num_int
+    x_trip = x[0:num_int]
+    pax = x[num_int:]
 
-    if len(b) > 0:
-        A_x_int   = A[ind_int, 1:num_int]
-        A_pax_int = A[ind_int, num_int + 1:A.shape[1]]
-        b_x_int   = b[ind_int] - A_pax_int * pax
+    if b.size > 0:
+        # A can subdivided into 4 matrices
+        # A = [A_x_con, A_pax_con;
+        #      A_x_int, A_pax_int]
+        A_x_int   = A[ind_int, 0:num_int]
+        A_pax_int = A[ind_int, num_int:A.shape[1]]
+        b_x_int   = b[ind_int] - A_pax_int.dot(pax)
     else:
-        A_x_int = []
-        b_x_int = []
+        A_x_int = np.array([])
+        b_x_int = np.array([])
 
-    if len(beq) > 0:
-        Aeq_x_int   = Aeq[indeq_int, 1:num_int]
-        Aeq_pax_int = Aeq[indeq_int, num_int + 1:Aeq.shape[1]]
-        beq_x_int   = beq[indeq_int] - Aeq_pax_int * pax
+    if beq.size > 0:
+        Aeq_x_int   = Aeq[indeq_int, 0:num_int]
+        Aeq_pax_int = Aeq[indeq_int, num_int:Aeq.shape[1]]
+        beq_x_int   = beq[indeq_int] - Aeq_pax_int.dot(pax)
     else:
-        Aeq_x_int = []
-        beq_x_int = []
+        Aeq_x_int = np.array([])
+        beq_x_int = np.array([])
 
     A_x_int_up, b_x_int_up, eflag = gomory_cut(x_trip, A_x_int, b_x_int, Aeq_x_int, beq_x_int)
-    if eflag == 1:
-        A_new = [A_x_int_up[A_x_int_up.shape[0], :], np.ones(1, num_con)]
-        b_new = b_x_int_up[b_x_int_up.shape[0]] + np.ones(1, num_con) * pax
-    else:
-        A_new = []
-        b_new = []
 
-    A_up = np.concatenate(A, A_new)
-    b_up = np.concatenate(b, b_new)
+    if eflag == 1:
+        A_new = np.concatenate((A_x_int_up[-1, :], np.ones(num_con)))
+        b_new = b_x_int_up[-1] + np.ones((1, num_con)).dot(pax)
+    else:
+        A_new = np.array([])
+        b_new = np.array([])
+
+    A_up = np.concatenate((A, [A_new]))
+    b_up = np.concatenate((b, b_new))
     return A_up, b_up
 
 
@@ -335,9 +343,9 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 can_F = [can_F, Aset[Fsub_i].b_F]
                 x_best = Aset[Fsub_i].x_F
                 U_best = Aset[Fsub_i].b_F
-                print '\n%s',   '======================='
-                print '\n%s',   'New solution found!'
-                print '\n%s\n', '======================='
+                print '======================='
+                print 'New solution found!'
+                print '======================='
                 Aset[Fsub_i] = []  # Fathom by integrality
                 ter_crit = 1
                 if (abs(U_best - f_best_relax) / abs(f_best_relax)) <= opt_cr:
@@ -551,6 +559,68 @@ class GomoryCutTestCase(unittest.TestCase):
         self.assertTrue(np.allclose(A_up, expected['A_up']))
         self.assertTrue(np.allclose(b_up, expected['b_up']))
         self.assertTrue(eflag == expected['eflag'])
+
+
+class CutPlaneTestCase(unittest.TestCase):
+
+    def test_problem(self):
+        """ test problem from call_Cutplane.m
+        """
+        # input arguments
+        x = np.array([
+            [9./4.],
+            [15./4.],
+            [1200.],
+            [500.]
+        ])
+        A = np.array([
+            [1., 1., 3., 3.],
+            [4., 1., 6., 5.],
+            [1., 1., 0., 0.],
+            [5., 9., 0., 0.]
+        ])
+        b = np.array([
+            [12.],
+            [1.],
+            [6.],
+            [45.]
+        ])
+        Aeq = np.array([])
+        beq = np.array([])
+
+        ind_con = np.array([0, 1])  # indices of con rows
+        ind_int = np.array([2, 3])  # indices of int rows
+
+        indeq_con = np.array([])
+        indeq_int = np.array([])
+
+        num_int = 2
+
+        # expected results (from MATLAB)
+        expected = {
+            'A_up': np.array([
+                [1., 1., 3., 3.],
+                [4., 1., 6., 5.],
+                [1., 1., 0., 0.],
+                [5., 9., 0., 0.],
+                [2., 3., 1., 1.],
+            ]),
+            'b_up': np.array([
+                [12.],
+                [1.],
+                [6.],
+                [45.],
+                [1715.]
+            ]),
+            'eflag': 1
+        }
+
+        # call the function
+        A_up, b_up  = cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int)
+
+        # check answer against expected results
+        self.assertTrue(np.allclose(A_up, expected['A_up']))
+        self.assertTrue(np.allclose(b_up, expected['b_up']))
 
 
 # class MainTestCase(unittest.TestCase):
