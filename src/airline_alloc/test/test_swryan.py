@@ -124,42 +124,62 @@ def get_constraints(inputs, constants, coefficients):
 
 
 def gomory_cut(x, A, b, Aeq, beq):
+    """ Gomory Cut (from 'GomoryCut.m')
+    """
     num_des = len(x)
+
     slack = []
-    if len(b) > 0:
-        slack = b - A * x
-        x_up = [[x], [slack]]
-        Ain_com = [A, np.eye(len(slack))]
+    if b.size > 0:
+        slack = b - A.dot(x)
+        x_up = np.concatenate((x, slack))
+        Ain_com = np.concatenate((A, np.eye(len(slack))), axis=1)
     else:
         x_up = x.copy()
-        Ain_com = []
+        Ain_com = np.array([])
 
     if len(beq) > 0:
-        Aeq_com = [Aeq, np.zeros((Aeq.shape[0], len(slack)))]
+        Aeq_com = np.concatenate((Aeq, np.zeros((Aeq.shape[0], len(slack)))))
     else:
-        Aeq_com = []
+        Aeq_com = np.array([])
 
-    Acom = [[Ain_com], [Aeq_com]]
-    bcom = [[b], [beq]]
+    if Aeq_com.size > 0:
+        Acom = np.concatenate((Ain_com, Aeq_com))
+    else:
+        Acom = Ain_com
+
+    if beq.size > 0:
+        bcom = np.concatenate((b, beq))
+    else:
+        bcom = b
 
     # Generate the Simplex optimal tableau
-    aaa = np.nonzeros((x_up - 0) > 1e-06)
-    B = []
-    for ii in range(len(aaa)):
-        B = [B, Acom[:, aaa[ii]]]
-    tab = [np.linalg.solve(B, Acom), np.linalg.solve(B, bcom)]
+    aaa = np.where(np.subtract(x_up, 0.) > 1e-06)
+    rows = Acom.shape[0]
+    cols = len(aaa[0])
+    B = np.zeros((rows, cols))
+    for ii in range(cols):
+        for jj in range(rows):
+            B[jj, aaa[ii]] = Acom[jj, aaa[ii]]
+    tab = np.concatenate((np.linalg.solve(B, Acom), np.linalg.solve(B, bcom)), axis=1)
 
     # Generate cut
     # Select the row from the optimal tableau corresponding
     # to the basic design variable that has the highest fractional part
-    b_end = tab[:, tab.shape[0]]
+    b_end = tab[:, tab.shape[1]-1].reshape(-1, 1)
+    delta = np.subtract(np.round(b_end), b_end)
+    aa = np.where(np.abs(delta) > 1e-06)
 
-    aa = np.nonzeros(abs(round(b_end) - b_end) > 1e-06)
-    __, rw_sel = max(np.remainder(abs(tab[aa, :]), 1))
+    rw_sel = -1
+    max_rem = 0
+    for ii in aa[0]:  # rows in tab with fractional part
+        rems = np.remainder(np.abs(tab[ii, :]), 1)
+        if rems.max() > max_rem:
+            max_rem = rems.max()
+            rw_sel = ii
 
     eflag = 0
 
-    if len(rw_sel) > 0:
+    if rw_sel >= 0:
         # apply Gomory cut
         equ_cut = tab[rw_sel, :]
         lhs = np.floor(equ_cut)
@@ -168,44 +188,44 @@ def gomory_cut(x, A, b, Aeq, beq):
         rhs[-1] = -rhs[-1]
 
         # cut: rhs < 0
-        a_x = rhs[1:num_des]
-        a_s = rhs[num_des + 1:rhs.shape[0] - 1]
-        A_new = a_x - a_s * A
-        b_new = - (rhs[rhs.shape[0]] + a_s * b)
+        a_x = rhs[0:num_des]
+        a_s = rhs[num_des:rhs.shape[0] - 1]
+        A_new = a_x - a_s.dot(A)
+        b_new = -(rhs[-1] + a_s.dot(b))
 
-        aa = np.nonzeros(abs(A_new - 0) <= 1e-08)
+        aa = np.where(abs(A_new - 0.) <= 1e-08)
         A_new[aa] = 0
-        bb = np.nonzeros(abs(b_new - 0) <= 1e-08)
+        bb = np.where(abs(b_new - 0.) <= 1e-08)
         b_new[bb] = 0
 
         # Update and print cut information
-        if (np.sum(A_new) != 0) and (np.sum(np.isnan(A_new)) == 0):
+        if (np.sum(A_new) != 0.) and (np.sum(np.isnan(A_new)) == 0.):
             eflag = 1
-            A_up = [[A], [A_new]]
-            b_up = [[b], [b_new]]
+            A_up = np.concatenate((A, [A_new]))
+            b_up = np.concatenate((b, [b_new]))
 
             cut_stat = ''
-            for ii in range(len(A_new) + 1):
-                if ii == len(A_new) + 1:
+            for ii in range(len(A_new)+1):
+                if ii == len(A_new):
                     symbol = ' <= '
-                    cut_stat = cut_stat + symbol + str(b_new[b_new.shape[0]])
+                    cut_stat = cut_stat + symbol + str(b_new[-1])
                     break
                 if A_new[ii] != 0:
                     if A_new[ii] < 0:
                         symbol = ' - '
                     else:
-                        if len(cut_stat) > 0:
+                        if len(cut_stat) == 0:
                             symbol = ''
                         else:
                             symbol = ' + '
-                    cut_stat = cut_stat + symbol + str(abs(A_new[ii])) + 'x', str(ii)
+                    cut_stat = cut_stat + symbol + str(abs(A_new[ii])) + 'x' + str(ii)
 
     if eflag == 1:
-        print('\\n%s\\n', 'Applying cut: ', cut_stat)
+        print '\nApplying cut: %s\n' % cut_stat
     else:
         A_up = A.copy()
         b_up = b.copy()
-        print('\\n%s\\n', 'No cut applied!!')
+        print '\nNo cut applied!!\n'
 
     return A_up, b_up, eflag
 
@@ -244,8 +264,7 @@ def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int
     return A_up, b_up
 
 
-def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
-               ind_conCon, ind_intCon, indeq_conCon, indeq_intCon):
+def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon, indeq_conCon, indeq_intCon):
     """ branch and bound algorithm
     """
     f = [[f_int], [f_con]]
@@ -303,7 +322,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
         funCall = funCall + 1
 
         # rounding integers
-        aa = np.nonzeros(abs(round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
+        aa = np.where(abs(round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
         Aset[Fsub_i].x_F[aa] = round(Aset[Fsub_i].x_F(aa))
 
         if _iter == 1:
@@ -316,8 +335,8 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
                 can_F = [can_F, Aset[Fsub_i].b_F]
                 x_best = Aset[Fsub_i].x_F
                 U_best = Aset[Fsub_i].b_F
-                print '\n%s',    '======================='
-                print '\n%s',    'New solution found!'
+                print '\n%s',   '======================='
+                print '\n%s',   'New solution found!'
                 print '\n%s\n', '======================='
                 Aset[Fsub_i] = []  # Fathom by integrality
                 ter_crit = 1
@@ -489,45 +508,90 @@ class ConstraintsTestCase(unittest.TestCase):
         self.assertTrue(np.allclose(b, expected_b))
 
 
-class MainTestCase(unittest.TestCase):
+class GomoryCutTestCase(unittest.TestCase):
 
-    def test_branch_cut(self):
-        # smaller network with 3 routes
-        inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
-        outputs      = load_data_file('outputs_after_3routes.mat')['Outputs']
-        constants    = load_data_file('constants_after_3routes.mat')['Constants']
-        coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
+    def test_problem(self):
+        """ test problem from GomoryCut.m
+        """
+        # input arguments
+        x = np.array([
+            [55./14.],
+            [10./7.]
+        ])
+        A = np.array([
+            [2./5., 1.],
+            [2./5., -2./5.]
+        ])
+        b = np.array([
+            [3.],
+            [1.]
+        ])
+        Aeq = np.array([])
+        beq = np.array([])
 
-        # linear objective coefficients
-        objective   = get_objective(inputs, outputs, constants, coefficients)
-        f_int = objective[0]    # integer type design variables
-        f_con = objective[1]    # continuous type design variables
+        # expected results (from MATLAB)
+        expected = {
+            'A_up': np.array([
+                [0.4000,    1.0000],
+                [0.4000,   -0.4000],
+                [0.6000,    0.4000]
+            ]),
+            'b_up': np.array([
+                [3.0000],
+                [1.0000],
+                [2.0000]
+            ]),
+            'eflag': 1
+        }
 
-        # coefficient matrix for linear inequality constraints, Ax <= b
-        constraints = get_constraints(inputs, constants, coefficients)
-        A = constraints[0]
-        b = constraints[1]
+        # call the function
+        A_up, b_up, eflag = gomory_cut(x, A, b, Aeq, beq)
 
-        J = inputs.DVector.shape[0]  # number of routes
-        K = len(inputs.AvailPax)     # number of aircraft types
+        # check answer against expected results
+        self.assertTrue(np.allclose(A_up, expected['A_up']))
+        self.assertTrue(np.allclose(b_up, expected['b_up']))
+        self.assertTrue(eflag == expected['eflag'])
 
-        # lower and upper bounds
-        lb = np.zeros((2*K*J, 1))
-        ub = np.concatenate((
-            np.ones((K*J, 1)) * inputs.MaxTrip.reshape(-1, 1),
-            np.ones((K*J, 1)) * np.inf
-        ))
 
-        # initial x
-        x0 = []
+# class MainTestCase(unittest.TestCase):
 
-        # indices into A matrix for continuous & integer/continuous variables
-        ind_conCon = range(2*J)
-        ind_intCon = range(2*J, len(constraints[0])+1)
+#     def test_branch_cut(self):
+#         # smaller network with 3 routes
+#         inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
+#         outputs      = load_data_file('outputs_after_3routes.mat')['Outputs']
+#         constants    = load_data_file('constants_after_3routes.mat')['Constants']
+#         coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
 
-        # call the branch and cut algorithm to solve the MILP problem
-        branch_cut(f_int, f_con, A, b, [], [], lb, ub, x0,
-                   ind_conCon, ind_intCon, [], [])
+#         # linear objective coefficients
+#         objective   = get_objective(inputs, outputs, constants, coefficients)
+#         f_int = objective[0]    # integer type design variables
+#         f_con = objective[1]    # continuous type design variables
+
+#         # coefficient matrix for linear inequality constraints, Ax <= b
+#         constraints = get_constraints(inputs, constants, coefficients)
+#         A = constraints[0]
+#         b = constraints[1]
+
+#         J = inputs.DVector.shape[0]  # number of routes
+#         K = len(inputs.AvailPax)     # number of aircraft types
+
+#         # lower and upper bounds
+#         lb = np.zeros((2*K*J, 1))
+#         ub = np.concatenate((
+#             np.ones((K*J, 1)) * inputs.MaxTrip.reshape(-1, 1),
+#             np.ones((K*J, 1)) * np.inf
+#         ))
+
+#         # initial x
+#         x0 = []
+
+#         # indices into A matrix for continuous & integer/continuous variables
+#         ind_conCon = range(2*J)
+#         ind_intCon = range(2*J, len(constraints[0])+1)
+
+#         # call the branch and cut algorithm to solve the MILP problem
+#         branch_cut(f_int, f_con, A, b, [], [], lb, ub, x0,
+#                    ind_conCon, ind_intCon, [], [])
 
 
 if __name__ == "__main__":
