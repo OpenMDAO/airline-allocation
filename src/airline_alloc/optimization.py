@@ -392,3 +392,42 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
 
     return xopt, fopt, can_x, can_F, x_best_relax, f_best_relax, funCall, eflag
 
+
+if __name__ == "__main__":
+    # smaller network with 3 routes
+    from airline_alloc.test.test_optimization import load_data_file
+    inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
+    outputs      = load_data_file('outputs_after_3routes.mat')['Outputs']
+    constants    = load_data_file('constants_after_3routes.mat')['Constants']
+    coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
+
+    # linear objective coefficients
+    objective   = get_objective(inputs, outputs, constants, coefficients)
+    f_int = objective[0]    # integer type design variables
+    f_con = objective[1]    # continuous type design variables
+
+    # coefficient matrix for linear inequality constraints, Ax <= b
+    constraints = get_constraints(inputs, constants, coefficients)
+    A = constraints[0]
+    b = constraints[1]
+
+    J = inputs.DVector.shape[0]  # number of routes
+    K = len(inputs.AvailPax)     # number of aircraft types
+
+    # lower and upper bounds
+    lb = np.zeros((2*K*J, 1))
+    ub = np.concatenate((
+        np.ones((K*J, 1)) * inputs.MaxTrip.reshape(-1, 1),
+        np.ones((K*J, 1)) * np.inf
+    ))
+
+    # initial x
+    x0 = []
+
+    # indices into A matrix for continuous & integer/continuous variables
+    ind_conCon = range(2*J)
+    ind_intCon = range(2*J, len(constraints[0])+1)
+
+    # call the branch and cut algorithm to solve the MILP problem
+    branch_cut(f_int, f_con, A, b, [], [], lb, ub, x0,
+               ind_conCon, ind_intCon, [], [])
