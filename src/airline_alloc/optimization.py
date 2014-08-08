@@ -14,38 +14,19 @@ except ImportError, e:
     pass
 
 
-def range_extract(RVector, distance):
-    """ find the closest match in RVector for each value in distance
-        returns an index into RVector for each value in distance
-    """
-    indices = np.zeros(len(distance))
-
-    for cc in xrange(len(distance)):
-        dist = distance[cc]
-        diff_min = np.inf
-
-        for r_id, r_dist in np.ndenumerate(RVector):
-            diff = np.abs(r_dist - dist)
-            if diff < diff_min:
-                indices[cc] = r_id[0]
-                diff_min = diff
-
-    return indices
-
-
-def get_objective(inputs, outputs, constants, coefficients):
+def get_objective(data):
     """ generate the objective matrix for linprog
         returns the coefficients for the integer and continuous design variables
     """
 
-    J = inputs.DVector.shape[0]  # number of routes
-    K = len(inputs.AvailPax)     # number of aircraft types
+    J = data.inputs.DVector.shape[0]  # number of routes
+    K = len(data.inputs.AvailPax)     # number of aircraft types
     KJ = K*J
 
-    fuelburn  = coefficients.Fuelburn
-    docnofuel = coefficients.Doc
-    price     = outputs.TicketPrice
-    fuelcost  = constants.FuelCost
+    fuelburn  = data.coefficients.Fuelburn
+    docnofuel = data.coefficients.Doc
+    price     = data.outputs.TicketPrice
+    fuelcost  = data.constants.FuelCost
 
     obj_int = np.zeros((KJ, 1))
     obj_con = np.zeros((KJ, 1))
@@ -59,21 +40,21 @@ def get_objective(inputs, outputs, constants, coefficients):
     return obj_int.flatten(), obj_con.flatten()
 
 
-def get_constraints(inputs, constants, coefficients):
+def get_constraints(data):
     """ generate the constraint matrix/vector for linprog
     """
 
-    J = inputs.DVector.shape[0]  # number of routes
-    K = len(inputs.AvailPax)     # number of aircraft types
+    J = data.inputs.DVector.shape[0]  # number of routes
+    K = len(data.inputs.AvailPax)     # number of aircraft types
     KJ  = K*J
     KJ2 = KJ*2
 
-    dem   = inputs.DVector[:, 1].reshape(-1, 1)
-    BH    = coefficients.BlockTime
-    MH    = constants.MH.reshape(-1, 1)
-    cap   = inputs.AvailPax.flatten()
-    fleet = inputs.ACNum.reshape(-1, 1)
-    t     = inputs.TurnAround
+    dem   = data.inputs.DVector[:, 1].reshape(-1, 1)
+    BH    = data.coefficients.BlockTime
+    MH    = data.constants.MH.reshape(-1, 1)
+    cap   = data.inputs.AvailPax.flatten()
+    fleet = data.inputs.ACNum.reshape(-1, 1)
+    t     = data.inputs.TurnAround
 
     # Upper demand constraint
     A1 = np.zeros((J, KJ2))
@@ -329,18 +310,14 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
 
         # Aset[Fsub_i].x_F,Aset[Fsub_i].b_F, Aset[Fsub_i].eflag = \
         # linprog(Aset[Fsub_i].f,
-        #         Aset[Fsub_i].A, Aset[Fsub_i].b,
+        #         Aset[Fsub_i].A,   Aset[Fsub_i].b,
         #         Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
-        #         Aset[Fsub_i].lb, Aset[Fsub_i].ub,
+        #         Aset[Fsub_i].lb,  Aset[Fsub_i].ub,
         #         Aset[Fsub_i].x0)
         results = linprog(Aset[Fsub_i].f,
-                          A_eq=None,
-                          b_eq=None,
-                          A_ub=Aset[Fsub_i].A,
-                          b_ub=Aset[Fsub_i].b,
+                          A_eq=None,           b_eq=None,
+                          A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
                           bounds=bounds,
-                          method='simplex',
-                          callback=None,
                           options={ 'maxiter': 100, 'disp': True })
         print 'results:\n', results
         Aset[Fsub_i].x_F = results.x
@@ -350,7 +327,9 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
         funCall = funCall + 1
 
         # rounding integers
+        print 'Aset[Fsub_i].x_F:\n', Aset[Fsub_i].x_F
         aa = np.where(np.abs(np.round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
+        print 'aa:\n', aa
         Aset[Fsub_i].x_F[aa] = np.round(Aset[Fsub_i].x_F[aa])
 
         if _iter == 1:
@@ -435,39 +414,27 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
 
 if __name__ == "__main__":
 
-    def load_data(file_name):
-        # utility function to load MATLAB data
-        from os.path import dirname, pardir, join
-        from scipy.io import loadmat
-
-        data_path = join(dirname(__file__),pardir,pardir,'MATLAB','Data')
-
-        return loadmat(join(data_path,file_name),
-                       squeeze_me=True, struct_as_record=False)
-
     # smaller network with 3 routes
-    inputs       = load_data('inputs_after_3routes.mat')['Inputs']
-    outputs      = load_data('outputs_after_3routes.mat')['Outputs']
-    constants    = load_data('constants_after_3routes.mat')['Constants']
-    coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
+    from dataset import Dataset
+    data = Dataset(suffix='after_3routes')
 
     # linear objective coefficients
-    objective   = get_objective(inputs, outputs, constants, coefficients)
+    objective = get_objective(data)
     f_int = objective[0]    # integer type design variables
     f_con = objective[1]    # continuous type design variables
 
     # coefficient matrix for linear inequality constraints, Ax <= b
-    constraints = get_constraints(inputs, constants, coefficients)
+    constraints = get_constraints(data)
     A = constraints[0]
     b = constraints[1]
 
-    J = inputs.DVector.shape[0]  # number of routes
-    K = len(inputs.AvailPax)     # number of aircraft types
+    J = data.inputs.DVector.shape[0]  # number of routes
+    K = len(data.inputs.AvailPax)     # number of aircraft types
 
     # lower and upper bounds
     lb = np.zeros((2*K*J, 1))
     ub = np.concatenate((
-        np.ones((K*J, 1)) * inputs.MaxTrip.reshape(-1, 1),
+        np.ones((K*J, 1)) * data.inputs.MaxTrip.reshape(-1, 1),
         np.ones((K*J, 1)) * np.inf
     ))
 

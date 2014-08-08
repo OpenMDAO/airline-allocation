@@ -3,77 +3,18 @@ import unittest
 
 import numpy as np
 
+from airline_alloc.dataset import Dataset
 from airline_alloc.optimization import *
 
 
-def load_data(file_name):
-    """ utility function to load MATLAB data
-    """
-    from os.path import dirname, pardir, join
-    from scipy.io import loadmat
-
-    import airline_alloc
-    data_path = join(dirname(airline_alloc.__file__),pardir,pardir,'MATLAB','Data')
-
-    return loadmat(join(data_path,file_name),
-                   squeeze_me=True, struct_as_record=False)
-
-
-class RangeExtractTestCase(unittest.TestCase):
-
-    def test_3routes(self):
-        inputs = load_data('inputs_before_3routes.mat')['Inputs']
-
-        distance = [2000, 1500, 1000]
-
-        indices = range_extract(inputs.RVector, distance)
-
-        expected = np.array([80, 1782, 674])
-
-        self.assertTrue(np.allclose(indices, expected-1))  # zero indexing
-
-    def test_11routes(self):
-        inputs = load_data('inputs_before_11routes.mat')['Inputs']
-
-        distance = [162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
-
-        indices = range_extract(inputs.RVector, distance)
-
-        expected = np.array([
-            394, 1598, 410, 2042, 615, 742, 427, 1501, 1308, 414, 1317
-        ])
-
-        self.assertTrue(np.allclose(indices, expected-1))  # zero indexing
-
-    def test_31routes(self):
-        inputs = load_data('inputs_before_31routes.mat')['Inputs']
-
-        distance = [
-            113, 174, 289, 303, 324, 331,  342,  375,  407,  427,
-            484, 486, 531, 543, 550, 570,  594,  609,  622,  680,
-            747, 758, 760, 823, 837, 991, 1098, 1231, 1407, 1570, 1626
-        ]
-
-        indices = range_extract(inputs.RVector, distance)
-
-        expected = np.array([
-            1483, 1045, 1944, 1856,  754, 1463, 1718,  948,  416, 1801,
-            1795,  225,  845,  919,  840, 1746, 1739, 1797, 1947, 1987,
-            1429, 1802, 2060, 1897, 1410, 1241, 971,  1399, 1597, 2028, 1433
-        ])
-
-        self.assertTrue(np.allclose(indices, expected-1))  # zero indexing
-
-
 class ObjectiveTestCase(unittest.TestCase):
+    """ test the get_objective function
+    """
 
     def test_3routes(self):
-        inputs       = load_data('inputs_after_3routes.mat')['Inputs']
-        outputs      = load_data('outputs_after_3routes.mat')['Outputs']
-        constants    = load_data('constants_after_3routes.mat')['Constants']
-        coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
+        data = Dataset(suffix='after_3routes')
 
-        obj_int, obj_con = get_objective(inputs, outputs, constants, coefficients)
+        obj_int, obj_con = get_objective(data)
 
         expected_int = np.array([
             30078.1801074742,
@@ -98,13 +39,13 @@ class ObjectiveTestCase(unittest.TestCase):
 
 
 class ConstraintsTestCase(unittest.TestCase):
+    """ test the get_constraints function
+    """
 
     def test_3routes(self):
-        inputs       = load_data('inputs_after_3routes.mat')['Inputs']
-        constants    = load_data('constants_after_3routes.mat')['Constants']
-        coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
+        data = Dataset(suffix='after_3routes')
 
-        A, b = get_constraints(inputs, constants, coefficients)
+        A, b = get_constraints(data)
 
         expected_A = np.array([
             [0,       0,    0,   0,     0,    0,   1,   0,   0,   1,   0,   0],
@@ -132,6 +73,8 @@ class ConstraintsTestCase(unittest.TestCase):
 
 
 class GomoryCutTestCase(unittest.TestCase):
+    """ test the gomotry_cut function
+    """
 
     def test_problem(self):
         """ test problem from GomoryCut.m
@@ -177,6 +120,8 @@ class GomoryCutTestCase(unittest.TestCase):
 
 
 class CutPlaneTestCase(unittest.TestCase):
+    """ test the cut_plane function
+    """
 
     def test_problem(self):
         """ test problem from call_Cutplane.m
@@ -239,31 +184,30 @@ class CutPlaneTestCase(unittest.TestCase):
 
 
 class BranchCutTestCase(unittest.TestCase):
+    """ test the branch_cut function
+    """
 
     def test_branch_cut(self):
         # smaller network with 3 routes
-        inputs       = load_data('inputs_after_3routes.mat')['Inputs']
-        outputs      = load_data('outputs_after_3routes.mat')['Outputs']
-        constants    = load_data('constants_after_3routes.mat')['Constants']
-        coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
+        data = Dataset(suffix='after_3routes')
 
         # linear objective coefficients
-        objective   = get_objective(inputs, outputs, constants, coefficients)
+        objective = get_objective(data)
         f_int = objective[0]    # integer type design variables
         f_con = objective[1]    # continuous type design variables
 
         # coefficient matrix for linear inequality constraints, Ax <= b
-        constraints = get_constraints(inputs, constants, coefficients)
+        constraints = get_constraints(data)
         A = constraints[0]
         b = constraints[1]
 
-        J = inputs.DVector.shape[0]  # number of routes
-        K = len(inputs.AvailPax)     # number of aircraft types
+        J = data.inputs.DVector.shape[0]  # number of routes
+        K = len(data.inputs.AvailPax)     # number of aircraft types
 
         # lower and upper bounds
         lb = np.zeros((2*K*J, 1))
         ub = np.concatenate((
-            np.ones((K*J, 1)) * inputs.MaxTrip.reshape(-1, 1),
+            np.ones((K*J, 1)) * data.inputs.MaxTrip.reshape(-1, 1),
             np.ones((K*J, 1)) * np.inf
         ))
 
