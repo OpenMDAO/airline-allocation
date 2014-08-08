@@ -211,6 +211,12 @@ def gomory_cut(x, A, b, Aeq, beq):
 
 
 def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int):
+    """ execute the cutting plane algorithm
+        Extracts out only the integer design variables and their associated
+        constrain matrices
+        Important: Assumes the design vector as x = [x_integer;x_continuous]
+        (from 'call_Cutplane.m')
+    """
     num_con = x.size - num_int
     x_trip = x[0:num_int]
     pax = x[num_int:]
@@ -249,8 +255,40 @@ def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int
 
 
 def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon, indeq_conCon, indeq_intCon):
-    """ branch and bound algorithm
+    """ This is the branch and cut algorithm
+
+        INPUTS:
+            f_int, f_con - linear objective coefficents for the integer type and
+            continuous type design variables
+
+            A, b - Coefficient matrix for linear inequality constraints Ax <= b
+
+            Aeq, beq - Coefficient matrix for linear equality constraints Aeqx = beq
+
+            lb, ub - Lower and upper bounds on the design variables
+
+            x0 -  Initial x
+
+            ind_conCon - indices in the A matrix correspoding to the
+            constraints containing only continuous type design variables
+
+            ind_intCon - indices in the A matrix correspoding to the
+            constraints containing integer and continuous (if any) type design variables
+
+        OUTPUTS:
+            xopt - optimal x with integer soltuion.
+            fopt - optimal objective funtion value
+            can_x - list of candidate solutions x that are feasible (i.e satisfies integer constraint)
+
+            can_F - Corresponding list of objective function values
+            x_best_relax - x value of the relaxed problem (i.e no integer constraint)
+            f_best_relax - Objective fucntion value of the relaxed problem
+            funCall -  total number of times the optimizer is executed
+            eflag -  status of the run. 1- Solution exists. 0 - no solution found
+
+        (from 'branch_cut.m')
     """
+
     f = np.concatenate((f_int, f_con))
     num_int = len(f_int)
 
