@@ -1,31 +1,28 @@
 
-import os
 import unittest
 
 import numpy as np
-from scipy.io import loadmat
 
 from airline_alloc.optimization import *
 
 
-def load_data_file(file_name):
-    #../../../MATLAB/Data/<data_file>
-    file_path = os.path.join(
-        os.path.dirname(__file__),
-        os.path.pardir,
-        os.path.pardir,
-        os.path.pardir,
-        'MATLAB',
-        'Data',
-        file_name)
+def load_data(file_name):
+    """ utility function to load MATLAB data
+    """
+    from os.path import dirname, pardir, join
+    from scipy.io import loadmat
 
-    return loadmat(file_path, squeeze_me=True, struct_as_record=False)
+    import airline_alloc
+    data_path = join(dirname(airline_alloc.__file__),pardir,pardir,'MATLAB','Data')
+
+    return loadmat(join(data_path,file_name),
+                   squeeze_me=True, struct_as_record=False)
 
 
 class RangeExtractTestCase(unittest.TestCase):
 
     def test_3routes(self):
-        inputs = load_data_file('inputs_before_3routes.mat')['Inputs']
+        inputs = load_data('inputs_before_3routes.mat')['Inputs']
 
         distance = [2000, 1500, 1000]
 
@@ -36,7 +33,7 @@ class RangeExtractTestCase(unittest.TestCase):
         self.assertTrue(np.allclose(indices, expected-1))  # zero indexing
 
     def test_11routes(self):
-        inputs = load_data_file('inputs_before_11routes.mat')['Inputs']
+        inputs = load_data('inputs_before_11routes.mat')['Inputs']
 
         distance = [162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
 
@@ -49,7 +46,7 @@ class RangeExtractTestCase(unittest.TestCase):
         self.assertTrue(np.allclose(indices, expected-1))  # zero indexing
 
     def test_31routes(self):
-        inputs = load_data_file('inputs_before_31routes.mat')['Inputs']
+        inputs = load_data('inputs_before_31routes.mat')['Inputs']
 
         distance = [
             113, 174, 289, 303, 324, 331,  342,  375,  407,  427,
@@ -71,10 +68,10 @@ class RangeExtractTestCase(unittest.TestCase):
 class ObjectiveTestCase(unittest.TestCase):
 
     def test_3routes(self):
-        inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
-        outputs      = load_data_file('outputs_after_3routes.mat')['Outputs']
-        constants    = load_data_file('constants_after_3routes.mat')['Constants']
-        coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
+        inputs       = load_data('inputs_after_3routes.mat')['Inputs']
+        outputs      = load_data('outputs_after_3routes.mat')['Outputs']
+        constants    = load_data('constants_after_3routes.mat')['Constants']
+        coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
 
         obj_int, obj_con = get_objective(inputs, outputs, constants, coefficients)
 
@@ -103,9 +100,9 @@ class ObjectiveTestCase(unittest.TestCase):
 class ConstraintsTestCase(unittest.TestCase):
 
     def test_3routes(self):
-        inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
-        constants    = load_data_file('constants_after_3routes.mat')['Constants']
-        coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
+        inputs       = load_data('inputs_after_3routes.mat')['Inputs']
+        constants    = load_data('constants_after_3routes.mat')['Constants']
+        coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
 
         A, b = get_constraints(inputs, constants, coefficients)
 
@@ -245,10 +242,10 @@ class BranchCutTestCase(unittest.TestCase):
 
     def test_branch_cut(self):
         # smaller network with 3 routes
-        inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
-        outputs      = load_data_file('outputs_after_3routes.mat')['Outputs']
-        constants    = load_data_file('constants_after_3routes.mat')['Constants']
-        coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
+        inputs       = load_data('inputs_after_3routes.mat')['Inputs']
+        outputs      = load_data('outputs_after_3routes.mat')['Outputs']
+        constants    = load_data('constants_after_3routes.mat')['Constants']
+        coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
 
         # linear objective coefficients
         objective   = get_objective(inputs, outputs, constants, coefficients)

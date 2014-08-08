@@ -7,6 +7,12 @@
 
 import numpy as np
 
+try:
+    from scipy.optimize import linprog
+except ImportError, e:
+    print "SciPy version >= 0.15.0 is required for linprog support!!"
+    pass
+
 
 def range_extract(RVector, distance):
     """ find the closest match in RVector for each value in distance
@@ -264,10 +270,8 @@ def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int
 def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon, indeq_conCon, indeq_intCon):
     """ branch and bound algorithm
     """
-    f = [[f_int], [f_con]]
+    f = np.concatenate((f_int, f_con))
     num_int = len(f_int)
-    num_con = len(f_con)
-    num_des = num_int + num_con
 
     _iter = 0
     funCall = 0
@@ -282,19 +286,25 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
     node_num = 1
     tree = 1
 
-    Aset = object()
-    Aset.f = f
-    Aset.A = A
-    Aset.b = b
-    Aset.Aeq = Aeq
-    Aset.beq = beq
-    Aset.lb = lb
-    Aset.ub = ub
-    Aset.x0 = x0
-    Aset.b_F = 0
-    Aset.x_F = []
-    Aset.node = node_num
-    Aset.tree = tree
+    class Problem(object):
+        pass
+
+    prob = Problem()
+    prob.f = f
+    prob.A = A
+    prob.b = b
+    prob.Aeq = Aeq
+    prob.beq = beq
+    prob.lb = lb
+    prob.ub = ub
+    prob.x0 = x0
+    prob.b_F = 0
+    prob.x_F = []
+    prob.node = node_num
+    prob.tree = tree
+
+    Aset = []
+    Aset.append(prob)
 
     while len(Aset) > 0 and ter_crit != 2:
 
@@ -309,25 +319,46 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 Fsub = Aset[ii].b_F
 
         # solve subproblem using linprog
-        Aset[Fsub_i].x_F, Aset[Fsub_i].b_F, Aset[Fsub_i].eflag = \
-            np.linprog(Aset[Fsub_i].f,
-                       Aset[Fsub_i].A, Aset[Fsub_i].b,
-                       Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
-                       Aset[Fsub_i].lb, Aset[Fsub_i].ub,
-                       Aset[Fsub_i].x0)
+        # print 'Aeq:\n', Aset[Fsub_i].Aeq
+        # print 'beq:\n', Aset[Fsub_i].beq
+        print 'f:\n', Aset[Fsub_i].f
+        print 'A:\n', Aset[Fsub_i].A
+        print 'b:\n', Aset[Fsub_i].b
+        bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
+        # print 'bounds:\n', bounds
+
+        # Aset[Fsub_i].x_F,Aset[Fsub_i].b_F, Aset[Fsub_i].eflag = \
+        # linprog(Aset[Fsub_i].f,
+        #         Aset[Fsub_i].A, Aset[Fsub_i].b,
+        #         Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
+        #         Aset[Fsub_i].lb, Aset[Fsub_i].ub,
+        #         Aset[Fsub_i].x0)
+        results = linprog(Aset[Fsub_i].f,
+                          A_eq=None,
+                          b_eq=None,
+                          A_ub=Aset[Fsub_i].A,
+                          b_ub=Aset[Fsub_i].b,
+                          bounds=bounds,
+                          method='simplex',
+                          callback=None,
+                          options={ 'maxiter': 100, 'disp': True })
+        print 'results:\n', results
+        Aset[Fsub_i].x_F = results.x
+        Aset[Fsub_i].b_F = results.fun
+        Aset[Fsub_i].eflag = 1 if results.success else 0
 
         funCall = funCall + 1
 
         # rounding integers
-        aa = np.where(abs(round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
-        Aset[Fsub_i].x_F[aa] = round(Aset[Fsub_i].x_F(aa))
+        aa = np.where(np.abs(np.round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
+        Aset[Fsub_i].x_F[aa] = np.round(Aset[Fsub_i].x_F[aa])
 
         if _iter == 1:
             x_best_relax = Aset[Fsub_i].x_F
             f_best_relax = Aset[Fsub_i].b_F
 
         if ((Aset[Fsub_i].eflag >= 1) and (Aset[Fsub_i].b_F < U_best)):
-            if np.norm(Aset[Fsub_i].x_F(range(num_int)) - round(Aset[Fsub_i].x_F(range(num_int)))) <= 1e-06:
+            if np.linalg.norm(Aset[Fsub_i].x_F[range(num_int)] - np.round(Aset[Fsub_i].x_F[range(num_int)])) <= 1e-06:
                 can_x = [can_x, Aset[Fsub_i].x_F]
                 can_F = [can_F, Aset[Fsub_i].b_F]
                 x_best = Aset[Fsub_i].x_F
@@ -335,12 +366,11 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 print '======================='
                 print 'New solution found!'
                 print '======================='
-                Aset[Fsub_i] = []  # Fathom by integrality
+                del Aset[Fsub_i]  # Fathom by integrality
                 ter_crit = 1
                 if (abs(U_best - f_best_relax) / abs(f_best_relax)) <= opt_cr:
                     ter_crit = 2
             else:  # cut and branch
-
                 # apply cut to subproblem
                 if Aset[Fsub_i].node != 1:
                     Aset[Fsub_i].A, Aset[Fsub_i].b = cut_plane(Aset[Fsub_i].x_F,
@@ -349,57 +379,77 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                         ind_conCon, ind_intCon,
                         indeq_conCon, indeq_intCon,
                         num_int)
+                print 'after cut, A:\n', Aset[Fsub_i].A
 
                 # branching
-                __, x_ind_maxfrac = max(np.remainder(abs(Aset[Fsub_i].x_F(range(num_int))), 1))
-                x_split = Aset[Fsub_i].x_F(x_ind_maxfrac)
-                print '\n%s%d%s%d%s%f\n' % ('Branching at tree: ', Aset[Fsub_i].tree, ' at x', x_ind_maxfrac, ' = ', x_split)
+                x_ind_maxfrac = np.argmax(np.remainder(np.abs(Aset[Fsub_i].x_F[range(num_int)]), 1))
+                x_split = Aset[Fsub_i].x_F[x_ind_maxfrac]
+                print '\nBranching at tree: %d at x%d = %f\n' % (Aset[Fsub_i].tree, x_ind_maxfrac, x_split)
                 F_sub = []
                 for jj in range(2):
-                    F_sub[jj] = Aset[Fsub_i]
-                    A_rw_add = np.zeros(1, len(Aset[Fsub_i].x_F))
+                    print jj
+                    F_sub.append(Aset[Fsub_i])
+                    A_rw_add = np.zeros(len(Aset[Fsub_i].x_F))
+                    print 'A_rw_add:', A_rw_add
                     if jj == 0:
                         A_con = 1
                         b_con = np.floor(x_split)
                     else:
-                        if jj == 2:
+                        if jj == 1:
                             A_con = -1
                             b_con = -np.ceil(x_split)
 
                     A_rw_add[x_ind_maxfrac] = A_con
-                    A_up = [[F_sub[jj].A], [A_rw_add]]
-                    b_up = [[F_sub[jj].b], [b_con]]
+                    print 'A_rw_add:', A_rw_add
+                    print 'F_sub[jj].A:', F_sub[jj].A
+                    A_up = np.concatenate((F_sub[jj].A, [A_rw_add]))
+                    print 'A_up:', A_up
+
+                    print 'F_sub[jj].b:', F_sub[jj].b
+                    print 'b_con:', b_con
+                    b_up = np.append(F_sub[jj].b, b_con)
+                    print 'b_up:', b_up
                     F_sub[jj].A = A_up
                     F_sub[jj].b = b_up
                     F_sub[jj].tree = 10 * F_sub[jj].tree + jj
                     node_num = node_num + 1
                     F_sub[jj].node = node_num
-                Aset[Fsub_i] = []
-                Aset = [Aset, F_sub]
+                del Aset[Fsub_i]
+                Aset.extend(F_sub)
         else:
-            Aset[Fsub_i] = []  # Fathomed by infeasibility or bounds
+            del Aset[Fsub_i]  # Fathomed by infeasibility or bounds
 
     if ter_crit > 0:
         eflag = 1
         xopt = x_best.copy()
         fopt = U_best.copy()
         if ter_crit == 1:
-            print '\n%s%0.1f%s\n' % ('Solution found but is not within ', opt_cr*100, '%% of the best relaxed solution!')
+            print '\nSolution found but is not within %0.1f%% of the best relaxed solution!\n' % opt_cr*100
         elif ter_crit == 2:
-            print '\n%s%0.1f%s\n' % ('Solution found and is within ', opt_cr*100, '%% of the best relaxed solution!')
+            print '\nSolution found and is within %0.1f%% of the best relaxed solution!\n' % opt_cr*100
     else:
-        print '\n%s\n' % 'No solution found!!'
+        print '\nNo solution found!!\n'
 
     return xopt, fopt, can_x, can_F, x_best_relax, f_best_relax, funCall, eflag
 
 
 if __name__ == "__main__":
+
+    def load_data(file_name):
+        # utility function to load MATLAB data
+        from os.path import dirname, pardir, join
+        from scipy.io import loadmat
+
+        data_path = join(dirname(__file__),pardir,pardir,'MATLAB','Data')
+
+        return loadmat(join(data_path,file_name),
+                       squeeze_me=True, struct_as_record=False)
+
     # smaller network with 3 routes
-    from airline_alloc.test.test_optimization import load_data_file
-    inputs       = load_data_file('inputs_after_3routes.mat')['Inputs']
-    outputs      = load_data_file('outputs_after_3routes.mat')['Outputs']
-    constants    = load_data_file('constants_after_3routes.mat')['Constants']
-    coefficients = load_data_file('coefficients_after_3routes.mat')['Coefficients']
+    inputs       = load_data('inputs_after_3routes.mat')['Inputs']
+    outputs      = load_data('outputs_after_3routes.mat')['Outputs']
+    constants    = load_data('constants_after_3routes.mat')['Constants']
+    coefficients = load_data('coefficients_after_3routes.mat')['Coefficients']
 
     # linear objective coefficients
     objective   = get_objective(inputs, outputs, constants, coefficients)
