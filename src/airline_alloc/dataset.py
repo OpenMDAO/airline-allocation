@@ -28,8 +28,7 @@ class Dataset(object):
     """
     def __init__(self, file_name=None, suffix=None):
         if file_name is not None:
-            mat = loadmat(join(data_path, file_name),
-                          squeeze_me=True, struct_as_record=False)
+            mat = load_data(file_name)
             self.inputs       = mat['Inputs']
             self.outputs      = mat['Outputs']
             self.constants    = mat['Constants']
@@ -40,8 +39,7 @@ class Dataset(object):
             # one of the four structs and suffix is arbitrary
             for key in ['Inputs', 'Outputs', 'Constants', 'Coefficients']:
                 file_name = key.lower() + '_'+suffix+'.mat'
-                mat = loadmat(join(data_path, file_name),
-                              squeeze_me=True, struct_as_record=False)
+                mat = load_data(file_name)
                 setattr(self, key.lower(), mat[key])
         else:
             self.inputs = None
@@ -144,7 +142,7 @@ if __name__ == "__main__":
 
     ac_ind    = np.array([ 9, 10]) - 1
     ac_num    = np.array([12,  8])
-    distance  = [163, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
+    distance  = [162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
     dvector   = np.array([
         [1,   41],
         [2, 1009],

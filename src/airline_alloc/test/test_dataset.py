@@ -170,7 +170,7 @@ class DatasetFilterTestCase(unittest.TestCase):
 
         ac_ind    = np.array([ 9, 10]) - 1
         ac_num    = np.array([12,  8])
-        distance  = [163, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
+        distance  = [162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
         dvector   = np.array([
             [1,   41],
             [2, 1009],
