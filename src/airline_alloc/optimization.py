@@ -6,6 +6,7 @@
 """
 
 import numpy as np
+import copy
 
 try:
     from scipy.optimize import linprog
@@ -104,7 +105,7 @@ def gomory_cut(x, A, b, Aeq, beq):
     """
     num_des = len(x)
 
-    slack = []
+    slack = np.array([])
     if b.size > 0:
         slack = b - A.dot(x)
         x_up = np.concatenate((x, slack))
@@ -113,8 +114,8 @@ def gomory_cut(x, A, b, Aeq, beq):
         x_up = x.copy()
         Ain_com = np.array([])
 
-    if len(beq) > 0:
-        Aeq_com = np.concatenate((Aeq, np.zeros((Aeq.shape[0], len(slack)))))
+    if beq.size > 0:
+        Aeq_com = np.concatenate((Aeq, np.zeros((Aeq.shape[0], slack.size))))
     else:
         Aeq_com = np.array([])
 
@@ -130,14 +131,16 @@ def gomory_cut(x, A, b, Aeq, beq):
 
     # Generate the Simplex optimal tableau
     aaa = np.where(np.subtract(x_up, 0.) > 1e-06)
-    cols = Acom.shape[0]
-    rows = len(aaa[0])
+    aaa = aaa[0]
+    cols = len(aaa)
+    rows = Acom.shape[0]
     B = np.zeros((rows, cols))
     for ii in range(cols):
-        for jj in range(rows):
-            B[jj, aaa[ii]] = Acom[jj, aaa[ii]]
+        B[:, ii] = Acom[:, aaa[ii]]
 
-    tab = np.concatenate((np.linalg.solve(B, Acom), np.linalg.solve(B, bcom)), axis=1)
+    B_Acom = np.linalg.lstsq(B, Acom)[0]
+    B_bcom = np.linalg.lstsq(B, bcom)[0].reshape(-1, 1)
+    tab = np.concatenate((B_Acom, B_bcom), axis=1)
 
     # Generate cut
     # Select the row from the optimal tableau corresponding
@@ -338,13 +341,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 Fsub = Aset[ii].b_F
 
         # solve subproblem using linprog
-        # print 'Aeq:\n', Aset[Fsub_i].Aeq
-        # print 'beq:\n', Aset[Fsub_i].beq
-        print 'f:\n', Aset[Fsub_i].f
-        print 'A:\n', Aset[Fsub_i].A
-        print 'b:\n', Aset[Fsub_i].b
         bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
-        # print 'bounds:\n', bounds
 
         # Aset[Fsub_i].x_F,Aset[Fsub_i].b_F, Aset[Fsub_i].eflag = \
         # linprog(Aset[Fsub_i].f,
@@ -357,7 +354,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                           A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
                           bounds=bounds,
                           options={ 'maxiter': 100, 'disp': True })
-        print 'results:\n', results
+        # print 'results:\n---------------\n', results, '\n---------------'
         Aset[Fsub_i].x_F = results.x
         Aset[Fsub_i].b_F = results.fun
         Aset[Fsub_i].eflag = 1 if results.success else 0
@@ -365,9 +362,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
         funCall = funCall + 1
 
         # rounding integers
-        print 'Aset[Fsub_i].x_F:\n', Aset[Fsub_i].x_F
         aa = np.where(np.abs(np.round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
-        print 'aa:\n', aa
         Aset[Fsub_i].x_F[aa] = np.round(Aset[Fsub_i].x_F[aa])
 
         if _iter == 1:
@@ -387,16 +382,17 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 ter_crit = 1
                 if (abs(U_best - f_best_relax) / abs(f_best_relax)) <= opt_cr:
                     ter_crit = 2
-            else:  # cut and branch
+            else:
                 # apply cut to subproblem
                 if Aset[Fsub_i].node != 1:
-                    Aset[Fsub_i].A, Aset[Fsub_i].b = cut_plane(Aset[Fsub_i].x_F,
+                    Aset[Fsub_i].A, Aset[Fsub_i].b = cut_plane(
+                        Aset[Fsub_i].x_F,
                         Aset[Fsub_i].A, Aset[Fsub_i].b,
                         Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
                         ind_conCon, ind_intCon,
                         indeq_conCon, indeq_intCon,
-                        num_int)
-                print 'after cut, A:\n', Aset[Fsub_i].A
+                        num_int
+                    )
 
                 # branching
                 x_ind_maxfrac = np.argmax(np.remainder(np.abs(Aset[Fsub_i].x_F[range(num_int)]), 1))
@@ -404,10 +400,8 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 print '\nBranching at tree: %d at x%d = %f\n' % (Aset[Fsub_i].tree, x_ind_maxfrac, x_split)
                 F_sub = []
                 for jj in range(2):
-                    print jj
-                    F_sub.append(Aset[Fsub_i])
+                    F_sub.append(copy.deepcopy(Aset[Fsub_i]))
                     A_rw_add = np.zeros(len(Aset[Fsub_i].x_F))
-                    print 'A_rw_add:', A_rw_add
                     if jj == 0:
                         A_con = 1
                         b_con = np.floor(x_split)
@@ -417,15 +411,8 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                             b_con = -np.ceil(x_split)
 
                     A_rw_add[x_ind_maxfrac] = A_con
-                    print 'A_rw_add:', A_rw_add
-                    print 'F_sub[jj].A:', F_sub[jj].A
                     A_up = np.concatenate((F_sub[jj].A, [A_rw_add]))
-                    print 'A_up:', A_up
-
-                    print 'F_sub[jj].b:', F_sub[jj].b
-                    print 'b_con:', b_con
                     b_up = np.append(F_sub[jj].b, b_con)
-                    print 'b_up:', b_up
                     F_sub[jj].A = A_up
                     F_sub[jj].b = b_up
                     F_sub[jj].tree = 10 * F_sub[jj].tree + jj
@@ -466,6 +453,9 @@ if __name__ == "__main__":
     A = constraints[0]
     b = constraints[1]
 
+    Aeq = np.array([])
+    beq = np.array([])
+
     J = data.inputs.DVector.shape[0]  # number of routes
     K = len(data.inputs.AvailPax)     # number of aircraft types
 
@@ -484,5 +474,5 @@ if __name__ == "__main__":
     ind_intCon = range(2*J, len(constraints[0])+1)
 
     # call the branch and cut algorithm to solve the MILP problem
-    branch_cut(f_int, f_con, A, b, [], [], lb, ub, x0,
+    branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
                ind_conCon, ind_intCon, [], [])

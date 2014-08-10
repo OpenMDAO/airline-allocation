@@ -148,8 +148,8 @@ class CutPlaneTestCase(unittest.TestCase):
         Aeq = np.array([])
         beq = np.array([])
 
-        ind_con = np.array([0, 1])  # indices of con rows
-        ind_int = np.array([2, 3])  # indices of int rows
+        ind_con = np.array([1, 2]) - 1  # indices of con rows
+        ind_int = np.array([3, 4]) - 1  # indices of int rows
 
         indeq_con = np.array([])
         indeq_int = np.array([])
@@ -172,7 +172,117 @@ class CutPlaneTestCase(unittest.TestCase):
                 [45.],
                 [1715.]
             ]),
-            'eflag': 1
+        }
+
+        # call the function
+        A_up, b_up  = cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int)
+
+        # check answer against expected results
+        self.assertTrue(np.allclose(A_up, expected['A_up']))
+        self.assertTrue(np.allclose(b_up, expected['b_up']))
+
+    def test_problem2(self):
+        """ another test problem
+        """
+        # input arguments
+        x = np.array([
+            [0.],
+            [7.],
+            [2.0561],
+            [2.4590],
+            [0.],
+            [0.],
+            [0.],
+            [700.],
+            [220.],
+            [300.],
+            [0.],
+            [0.],
+
+        ])
+        A = np.array([
+            [         0,         0,         0,         0,         0,         0,    1.0000,         0,         0,    1.0000,         0,         0],
+            [         0,         0,         0,         0,         0,         0,         0,    1.0000,         0,         0,    1.0000,         0],
+            [         0,         0,         0,         0,         0,         0,         0,         0,    1.0000,         0,         0,    1.0000],
+            [         0,         0,         0,         0,         0,         0,   -1.0000,         0,         0,   -1.0000,         0,         0],
+            [         0,         0,         0,         0,         0,         0,         0,   -1.0000,         0,         0,   -1.0000,         0],
+            [         0,         0,         0,         0,         0,         0,         0,         0,   -1.0000,         0,         0,   -1.0000],
+            [   10.4653,    8.3129,    6.1531,         0,         0,         0,         0,         0,         0,         0,         0,         0],
+            [         0,         0,         0,   10.4460,    8.2998,    6.1460,         0,         0,         0,         0,         0,         0],
+            [ -107.0000,         0,         0,         0,         0,         0,    1.0000,         0,         0,         0,         0,         0],
+            [         0, -107.0000,         0,         0,         0,         0,         0,    1.0000,         0,         0,         0,         0],
+            [         0,         0, -107.0000,         0,         0,         0,         0,         0,    1.0000,         0,         0,         0],
+            [         0,         0,         0, -122.0000,         0,         0,         0,         0,         0,    1.0000,         0,         0],
+            [         0,         0,         0,         0, -122.0000,         0,         0,         0,         0,         0,    1.0000,         0],
+            [         0,         0,         0,         0,         0, -122.0000,         0,         0,         0,         0,         0,    1.0000],
+            [         0,   -1.0000,         0,         0,         0,         0,         0,         0,         0,         0,         0,         0]
+        ])
+        b = np.array([
+            [   300.],
+            [   700.],
+            [   220.],
+            [   -60.],
+            [  -140.],
+            [   -44.],
+            [    72.],
+            [    48.],
+            [     0.],
+            [     0.],
+            [     0.],
+            [     0.],
+            [     0.],
+            [     0.],
+            [    -7.]
+        ])
+        Aeq = np.array([])
+        beq = np.array([])
+
+        ind_con = np.array([1,     2,     3,     4,     5,     6]) - 1  # indices of con rows
+        ind_int = np.array([7,     8,     9,    10,    11,    12,    13,    14]) - 1  # indices of int rows
+
+        indeq_con = np.array([])
+        indeq_int = np.array([])
+
+        num_int = 6
+
+        # expected results (from MATLAB)
+        expected = {
+            'A_up': np.array([
+                [         0,         0,         0,         0,         0,         0,    1.0000,         0,        0,    1.0000,         0,         0],
+                [         0,         0,         0,         0,         0,         0,         0,    1.0000,        0,         0,    1.0000,         0],
+                [         0,         0,         0,         0,         0,         0,         0,         0,   1.0000,         0,         0,    1.0000],
+                [         0,         0,         0,         0,         0,         0,   -1.0000,         0,        0,   -1.0000,         0,         0],
+                [         0,         0,         0,         0,         0,         0,         0,   -1.0000,        0,         0,   -1.0000,         0],
+                [         0,         0,         0,         0,         0,         0,         0,         0,  -1.0000,         0,         0,   -1.0000],
+                [   10.4653,    8.3129,    6.1531,         0,         0,         0,         0,         0,        0,         0,         0,         0],
+                [         0,         0,         0,   10.4460,    8.2998,    6.1460,         0,         0,        0,         0,         0,         0],
+                [ -107.0000,         0,         0,         0,         0,         0,    1.0000,         0,        0,         0,         0,         0],
+                [         0, -107.0000,         0,         0,         0,         0,         0,    1.0000,        0,         0,         0,         0],
+                [         0,         0, -107.0000,         0,         0,         0,         0,         0,   1.0000,         0,         0,         0],
+                [         0,         0,         0, -122.0000,         0,         0,         0,         0,        0,    1.0000,         0,         0],
+                [         0,         0,         0,         0, -122.0000,         0,         0,         0,        0,         0,    1.0000,         0],
+                [         0,         0,         0,         0,         0, -122.0000,         0,         0,        0,         0,         0,    1.0000],
+                [         0,   -1.0000,         0,         0,         0,         0,         0,         0,        0,         0,         0,         0],
+                [  -97.0000,   -1.0000,         0, -122.0000,         0,         0,    1.0000,    1.0000,   1.0000,    1.0000,    1.0000,    1.0000]
+            ]),
+            'b_up': np.array([
+                [300],
+                [700],
+                [220],
+                [-60],
+                [-140],
+                [-44],
+                [72],
+                [48],
+                [ 0],
+                [ 0],
+                [ 0],
+                [ 0],
+                [ 0],
+                [ 0],
+                [-7],
+                [924]
+            ]),
         }
 
         # call the function
@@ -201,6 +311,9 @@ class BranchCutTestCase(unittest.TestCase):
         A = constraints[0]
         b = constraints[1]
 
+        Aeq = np.array([])
+        beq = np.array([])
+
         J = data.inputs.DVector.shape[0]  # number of routes
         K = len(data.inputs.AvailPax)     # number of aircraft types
 
@@ -219,7 +332,7 @@ class BranchCutTestCase(unittest.TestCase):
         ind_intCon = range(2*J, len(constraints[0])+1)
 
         # call the branch and cut algorithm to solve the MILP problem
-        branch_cut(f_int, f_con, A, b, [], [], lb, ub, x0,
+        branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
                    ind_conCon, ind_intCon, [], [])
 
 
