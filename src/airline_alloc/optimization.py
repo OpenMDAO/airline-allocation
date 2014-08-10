@@ -138,8 +138,14 @@ def gomory_cut(x, A, b, Aeq, beq):
     for ii in range(cols):
         B[:, ii] = Acom[:, aaa[ii]]
 
-    B_Acom = np.linalg.lstsq(B, Acom)[0]
-    B_bcom = np.linalg.lstsq(B, bcom)[0].reshape(-1, 1)
+    # tab = [B\Acom,B\bcom]
+    # if B is square then solve, otherwise use least squares
+    if (B.shape[0] == B.shape[1]):
+        B_Acom = np.linalg.solve(B, Acom)
+        B_bcom = np.linalg.solve(B, bcom)
+    else:
+        B_Acom = np.linalg.lstsq(B, Acom)[0]
+        B_bcom = np.linalg.lstsq(B, bcom)[0].reshape(-1, 1)
     tab = np.concatenate((B_Acom, B_bcom), axis=1)
 
     # Generate cut

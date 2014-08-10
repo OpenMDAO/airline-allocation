@@ -114,8 +114,10 @@ class GomoryCutTestCase(unittest.TestCase):
         A_up, b_up, eflag = gomory_cut(x, A, b, Aeq, beq)
 
         # check answer against expected results
-        self.assertTrue(np.allclose(A_up, expected['A_up']))
-        self.assertTrue(np.allclose(b_up, expected['b_up']))
+        self.assertTrue(np.allclose(A_up, expected['A_up']),
+            msg='\n' + str(A_up) + '\n' + str(expected['A_up']))
+        self.assertTrue(np.allclose(b_up, expected['b_up']),
+            msg='\n' + str(b_up) + '\n' + str(expected['b_up']))
         self.assertTrue(eflag == expected['eflag'])
 
 
@@ -178,12 +180,15 @@ class CutPlaneTestCase(unittest.TestCase):
         A_up, b_up  = cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int)
 
         # check answer against expected results
-        self.assertTrue(np.allclose(A_up, expected['A_up']))
-        self.assertTrue(np.allclose(b_up, expected['b_up']))
+        self.assertTrue(np.allclose(A_up, expected['A_up']),
+            msg='\n' + str(A_up) + '\n' + str(expected['A_up']))
+        self.assertTrue(np.allclose(b_up, expected['b_up']),
+            msg='\n' + str(b_up) + '\n' + str(expected['b_up']))
 
     def test_problem2(self):
         """ another test problem
         """
+
         # input arguments
         x = np.array([
             [0.],
@@ -289,8 +294,10 @@ class CutPlaneTestCase(unittest.TestCase):
         A_up, b_up  = cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int)
 
         # check answer against expected results
-        self.assertTrue(np.allclose(A_up, expected['A_up']))
-        self.assertTrue(np.allclose(b_up, expected['b_up']))
+        self.assertTrue(np.allclose(A_up, expected['A_up']),
+            msg='\n' + str(A_up) + '\n' + str(expected['A_up']))
+        self.assertTrue(np.allclose(b_up, expected['b_up']),
+            msg='\n' + str(b_up) + '\n' + str(expected['b_up']))
 
 
 class BranchCutTestCase(unittest.TestCase):
@@ -298,6 +305,7 @@ class BranchCutTestCase(unittest.TestCase):
     """
 
     def test_branch_cut(self):
+
         # smaller network with 3 routes
         data = Dataset(suffix='after_3routes')
 
