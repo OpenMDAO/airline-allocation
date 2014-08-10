@@ -12,6 +12,7 @@ class ObjectiveTestCase(unittest.TestCase):
     """
 
     def test_3routes(self):
+
         data = Dataset(suffix='after_3routes')
 
         obj_int, obj_con = get_objective(data)
@@ -43,6 +44,7 @@ class ConstraintsTestCase(unittest.TestCase):
     """
 
     def test_3routes(self):
+
         data = Dataset(suffix='after_3routes')
 
         A, b = get_constraints(data)
@@ -79,6 +81,7 @@ class GomoryCutTestCase(unittest.TestCase):
     def test_problem(self):
         """ test problem from GomoryCut.m
         """
+
         # input arguments
         x = np.array([
             [55./14.],
@@ -128,6 +131,7 @@ class CutPlaneTestCase(unittest.TestCase):
     def test_problem(self):
         """ test problem from call_Cutplane.m
         """
+
         # input arguments
         x = np.array([
             [9./4.],
@@ -306,7 +310,6 @@ class BranchCutTestCase(unittest.TestCase):
 
     def test_branch_cut(self):
 
-        # smaller network with 3 routes
         data = Dataset(suffix='after_3routes')
 
         # linear objective coefficients

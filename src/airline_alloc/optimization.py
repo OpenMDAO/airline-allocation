@@ -226,6 +226,10 @@ def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int
         Important: Assumes the design vector as x = [x_integer;x_continuous]
         (from 'call_Cutplane.m')
     """
+    # make sure x and b vectors are correct shape
+    x = x.reshape(-1, 1)
+    b = b.reshape(-1, 1)
+
     num_con = x.size - num_int
     x_trip = x[0:num_int]
     pax = x[num_int:]
