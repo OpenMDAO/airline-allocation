@@ -351,20 +351,21 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 Fsub = Aset[ii].b_F
 
         # solve subproblem using linprog
+        print '---- calling linprog ----'
+        print 'f:\n', Aset[Fsub_i].f
+        print 'A:\n', Aset[Fsub_i].A
+        print 'b:\n', Aset[Fsub_i].b
+        print 'lb:\n', Aset[Fsub_i].lb.flatten()
+        print 'ub:\n', Aset[Fsub_i].ub.flatten()
+
         bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
 
-        # Aset[Fsub_i].x_F,Aset[Fsub_i].b_F, Aset[Fsub_i].eflag = \
-        # linprog(Aset[Fsub_i].f,
-        #         Aset[Fsub_i].A,   Aset[Fsub_i].b,
-        #         Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
-        #         Aset[Fsub_i].lb,  Aset[Fsub_i].ub,
-        #         Aset[Fsub_i].x0)
         results = linprog(Aset[Fsub_i].f,
                           A_eq=None,           b_eq=None,
                           A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
                           bounds=bounds,
                           options={ 'maxiter': 100, 'disp': True })
-        # print 'results:\n---------------\n', results, '\n---------------'
+        print 'results:\n---------------\n', results, '\n---------------'
         Aset[Fsub_i].x_F = results.x
         Aset[Fsub_i].b_F = results.fun
         Aset[Fsub_i].eflag = 1 if results.success else 0
@@ -449,7 +450,6 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
 
 if __name__ == "__main__":
 
-    # smaller network with 3 routes
     from dataset import Dataset
     data = Dataset(suffix='after_3routes')
 
@@ -463,8 +463,8 @@ if __name__ == "__main__":
     A = constraints[0]
     b = constraints[1]
 
-    Aeq = np.array([])
-    beq = np.array([])
+    Aeq = np.ndarray(shape=(0,0))
+    beq = np.ndarray(shape=(0,0))
 
     J = data.inputs.DVector.shape[0]  # number of routes
     K = len(data.inputs.AvailPax)     # number of aircraft types

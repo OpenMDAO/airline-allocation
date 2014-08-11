@@ -322,8 +322,8 @@ class BranchCutTestCase(unittest.TestCase):
         A = constraints[0]
         b = constraints[1]
 
-        Aeq = np.array([])
-        beq = np.array([])
+        Aeq = np.ndarray(shape=(0,0))
+        beq = np.ndarray(shape=(0,0))
 
         J = data.inputs.DVector.shape[0]  # number of routes
         K = len(data.inputs.AvailPax)     # number of aircraft types
