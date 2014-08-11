@@ -68,8 +68,16 @@ class LinearProgram(Component):
 class AirlineAllocationProblem(Component):
 
     # inputs
-    suffix = Str(iotype='in',
-                 desc='the suffix of the MATLAB data files containing the aircraft/network data')
+    filename = Str('Dataset.mat', iotype='in',
+               desc='the filename of the MATLAB data file containing the aircraft/network data')
+
+    ac_ind   = Array(iotype='in', desc='the indices of the aircraft to select')
+
+    ac_num   = Array(iotype='in', desc='the number of each aircraft')
+
+    distance = Array(iotype='in', desc='the route distances to select')
+
+    dvector  = Array(iotype='in', desc='the route demand')
 
     # outputs
     f   = Array(iotype='out',
@@ -100,7 +108,9 @@ class AirlineAllocationProblem(Component):
             desc='indices in the A matrix correspoding to the constraints containing integer and continuous (if any) type design variables')
 
     def execute(self):
-        data = Dataset(suffix=self.suffix)
+        # read and select the data
+        data = Dataset(self.filename)
+        data.filter(self.ac_ind, self.ac_num, self.distance, self.dvector)
 
         # linear objective coefficients
         objective = get_objective(data)
@@ -113,6 +123,7 @@ class AirlineAllocationProblem(Component):
         self.A = constraints[0]
         self.b = constraints[1]
 
+        # coefficient matrix for linear equality constraints, Aeqx <= beq (N/A)
         self.Aeq = np.ndarray(shape=(0,0))
         self.beq = np.ndarray(shape=(0,0))
 
@@ -136,7 +147,6 @@ if __name__ == '__main__':
     top.add('problem', AirlineAllocationProblem())
     top.add('program', LinearProgram())
 
-    top.problem.suffix = 'after_3routes'
     top.connect('problem.f',   'program.c')
     top.connect('problem.A',   'program.A_ub')
     top.connect('problem.b',   'program.b_ub')
@@ -146,6 +156,16 @@ if __name__ == '__main__':
     top.connect('problem.ub',  'program.ub')
 
     top.driver.workflow.add(['problem', 'program'])
+
+    top.problem.ac_ind    = np.array([9, 10]) - 1
+    top.problem.ac_num    = np.array([6,  4])
+    top.problem.distance  = np.array([2000, 1500, 1000])
+    top.problem.dvector   = np.array([
+        [1, 300],
+        [2, 700],
+        [3, 220]
+    ])
+
     top.run()
 
     print 'success: \t', top.program.success

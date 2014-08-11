@@ -13,7 +13,7 @@ class RangeExtractTestCase(unittest.TestCase):
     def test_3routes(self):
         inputs = load_data('inputs_before_3routes.mat')['Inputs']
 
-        distance = [2000, 1500, 1000]
+        distance = np.array([2000, 1500, 1000])
 
         indices = range_extract(inputs.RVector, distance)
 
@@ -24,7 +24,7 @@ class RangeExtractTestCase(unittest.TestCase):
     def test_11routes(self):
         inputs = load_data('inputs_before_11routes.mat')['Inputs']
 
-        distance = [162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
+        distance = np.array([162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350])
 
         indices = range_extract(inputs.RVector, distance)
 
@@ -37,11 +37,11 @@ class RangeExtractTestCase(unittest.TestCase):
     def test_31routes(self):
         inputs = load_data('inputs_before_31routes.mat')['Inputs']
 
-        distance = [
+        distance = np.array([
             113, 174, 289, 303, 324, 331,  342,  375,  407,  427,
             484, 486, 531, 543, 550, 570,  594,  609,  622,  680,
             747, 758, 760, 823, 837, 991, 1098, 1231, 1407, 1570, 1626
-        ]
+        ])
 
         indices = range_extract(inputs.RVector, distance)
 
@@ -153,7 +153,7 @@ class DatasetFilterTestCase(unittest.TestCase):
 
         ac_ind    = np.array([9, 10]) - 1
         ac_num    = np.array([6,  4])
-        distance  = [2000, 1500, 1000]
+        distance  = np.array([2000, 1500, 1000])
         dvector   = np.array([
             [1, 300],
             [2, 700],
@@ -170,7 +170,7 @@ class DatasetFilterTestCase(unittest.TestCase):
 
         ac_ind    = np.array([ 9, 10]) - 1
         ac_num    = np.array([12,  8])
-        distance  = [162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350]
+        distance  = np.array([162, 753, 974, 1094, 1357, 1455, 2169, 2249, 2269, 2337, 2350])
         dvector   = np.array([
             [1,   41],
             [2, 1009],
@@ -195,11 +195,11 @@ class DatasetFilterTestCase(unittest.TestCase):
 
         ac_ind    = np.array([6, 10, 4, 9,  3, 8]) - 1
         ac_num    = np.array([1,  7, 2, 8, 19, 1])
-        distance  = [
+        distance  = np.array([
             113, 174, 289, 303, 324, 331,  342,  375,  407, 427,
             484, 486, 531, 543, 550, 570,  594,  609,  622, 680,
             747, 758, 760, 823, 837, 991, 1098, 1231, 1407, 1570, 1626
-        ]
+        ])
         dvector   = np.array([
             [ 1,   99],
             [ 2,   80],
