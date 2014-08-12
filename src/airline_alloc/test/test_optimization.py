@@ -322,8 +322,8 @@ class BranchCutTestCase(unittest.TestCase):
         A = constraints[0]
         b = constraints[1]
 
-        Aeq = np.ndarray(shape=(0,0))
-        beq = np.ndarray(shape=(0,0))
+        Aeq = np.ndarray(shape=(0, 0))
+        beq = np.ndarray(shape=(0, 0))
 
         J = data.inputs.DVector.shape[0]  # number of routes
         K = len(data.inputs.AvailPax)     # number of aircraft types
@@ -340,7 +340,7 @@ class BranchCutTestCase(unittest.TestCase):
 
         # indices into A matrix for continuous & integer/continuous variables
         ind_conCon = range(2*J)
-        ind_intCon = range(2*J, len(constraints[0])+1)
+        ind_intCon = range(2*J, len(constraints[0]))
 
         # call the branch and cut algorithm to solve the MILP problem
         branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,

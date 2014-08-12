@@ -11,10 +11,12 @@ except ImportError, e:
     pass
 
 from dataset import *
-from optimization import *
+from optimization import get_objective, get_constraints
 
 
 class LinearProgram(Component):
+    """ A simple component wrapper for scipy.optimize.linprog
+    """
 
     # inputs
     c     = Array(iotype='in',
@@ -66,6 +68,10 @@ class LinearProgram(Component):
 
 
 class AirlineAllocationProblem(Component):
+    """ Selects a subset of the large network dataset (2134 routes and 18 types of aircraft)
+        specified by the inputs (ac_ind, ac_num, distance, dvector) and formulates a linear
+        programming problem defined by the outputs
+    """
 
     # inputs
     filename = Str('Dataset.mat', iotype='in',
@@ -113,22 +119,22 @@ class AirlineAllocationProblem(Component):
         data.filter(self.ac_ind, self.ac_num, self.distance, self.dvector)
 
         # linear objective coefficients
-        objective = get_objective(data)
-        f_int = objective[0]    # integer type design variables
-        f_con = objective[1]    # continuous type design variables
+        objective = self.get_objective(data)
+        f_int = objective[0]                # integer type design variables
+        f_con = objective[1]                # continuous type design variables
         self.f = np.concatenate((f_int, f_con))
 
         # coefficient matrix for linear inequality constraints, Ax <= b
-        constraints = get_constraints(data)
+        constraints = self.get_constraints(data)
         self.A = constraints[0]
         self.b = constraints[1]
 
         # coefficient matrix for linear equality constraints, Aeqx <= beq (N/A)
-        self.Aeq = np.ndarray(shape=(0,0))
-        self.beq = np.ndarray(shape=(0,0))
+        self.Aeq = np.ndarray(shape=(0, 0))
+        self.beq = np.ndarray(shape=(0, 0))
 
-        J = data.inputs.DVector.shape[0]  # number of routes
-        K = len(data.inputs.AvailPax)     # number of aircraft types
+        J = data.inputs.DVector.shape[0]    # number of routes
+        K = len(data.inputs.AvailPax)       # number of aircraft types
 
         # lower and upper bounds
         self.lb = np.zeros((2*K*J, 1))
@@ -140,6 +146,21 @@ class AirlineAllocationProblem(Component):
         # indices into A matrix for continuous & integer/continuous variables
         self.ind_conCon = range(2*J)
         self.ind_intCon = range(2*J, len(constraints[0])+1)
+
+    def get_objective(self, data):
+        """ generate the objective matrix for linprog
+            returns the coefficients for the integer and continuous design variables
+        """
+        # currently sharing function definition with non-openmdao code
+        # ultimately this should be a proper member function
+        return get_objective(data)
+
+    def get_constraints(self, data):
+        """ generate the constraint matrix/vector for linprog
+        """
+        # currently sharing function definition with non-openmdao code
+        # ultimately this should be a proper member function
+        return get_constraints(data)
 
 
 if __name__ == '__main__':

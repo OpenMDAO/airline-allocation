@@ -14,6 +14,8 @@ except ImportError, e:
     print "SciPy version >= 0.15.0 is required for linprog support!!"
     pass
 
+np.set_printoptions(linewidth=240)
+
 
 def get_objective(data):
     """ generate the objective matrix for linprog
@@ -139,36 +141,44 @@ def gomory_cut(x, A, b, Aeq, beq):
         B[:, ii] = Acom[:, aaa[ii]]
 
     # tab = [B\Acom,B\bcom]
-    # if B is square then solve, otherwise use least squares
+    # if B is square then try solve, otherwise use least squares
     if (B.shape[0] == B.shape[1]):
-        B_Acom = np.linalg.solve(B, Acom)
-        B_bcom = np.linalg.solve(B, bcom)
+        try:
+            B_Acom = np.linalg.solve(B, Acom)
+            B_bcom = np.linalg.solve(B, bcom)
+        except np.linalg.LinAlgError:  # Singular Matrix
+            B_Acom = np.linalg.lstsq(B, Acom)[0]
+            B_bcom = np.linalg.lstsq(B, bcom)[0]
     else:
         B_Acom = np.linalg.lstsq(B, Acom)[0]
-        B_bcom = np.linalg.lstsq(B, bcom)[0].reshape(-1, 1)
+        B_bcom = np.linalg.lstsq(B, bcom)[0]
     tab = np.concatenate((B_Acom, B_bcom), axis=1)
+
+    # clean up tab for comparison to MATLAB
+    # print 'tab: %s\n' % str(tab.shape), tab
+    # aaa = np.where(np.subtract(tab, 0.) > 1e-03)
+    # print 'aaa: \n', aaa
+    # cols = aaa[0]
+    # rows = aaa[1]
+    # tab0 = np.zeros(tab.shape)
+    # for col, row in zip(rows, cols):
+    #     tab0[row, col] = tab[row, col]
+    # print 'tab0: %s\n' % str(tab0.shape), tab0
+    # tab = tab0
 
     # Generate cut
     # Select the row from the optimal tableau corresponding
     # to the basic design variable that has the highest fractional part
-    b_end = tab[:, tab.shape[1]-1].reshape(-1, 1)
-    delta = np.subtract(np.round(b_end), b_end)
-    aa = np.where(np.abs(delta) > 1e-06)
-
-    rw_sel = -1
-    max_rem = 0
-    for ii in aa[0]:  # rows in tab with fractional part
-        rems = np.remainder(np.abs(tab[ii, :]), 1)
-        # FIXME: remainder of 1.0/1  = 1.0  ????  (replace with 0)
-        aa = np.where(abs(rems - 1.0) <= 1e-08)
-        rems[aa] = 0
-        if rems.max() > max_rem:
-            max_rem = rems.max()
-            rw_sel = ii
+    b_end = tab[:, -1]
+    aa = np.where(np.abs(np.subtract(np.round(b_end), b_end)) > 1e-06)
+    if aa[0].size > 0:
+        rw_sel = np.argmax(np.remainder(np.abs(b_end), 1))
+    else:
+        rw_sel = None
 
     eflag = 0
 
-    if rw_sel >= 0:
+    if rw_sel is not None:
         # apply Gomory cut
         equ_cut = tab[rw_sel, :]
         lhs = np.floor(equ_cut)
@@ -351,34 +361,27 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 Fsub = Aset[ii].b_F
 
         # solve subproblem using linprog
-        print '---- calling linprog ----'
-        print 'f:\n', Aset[Fsub_i].f
-        print 'A:\n', Aset[Fsub_i].A
-        print 'b:\n', Aset[Fsub_i].b
-        print 'lb:\n', Aset[Fsub_i].lb.flatten()
-        print 'ub:\n', Aset[Fsub_i].ub.flatten()
-
         bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
-
         results = linprog(Aset[Fsub_i].f,
                           A_eq=None,           b_eq=None,
                           A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
                           bounds=bounds,
                           options={ 'maxiter': 100, 'disp': True })
-        print 'results:\n---------------\n', results, '\n---------------'
+        # print 'results:\n---------------\n', results, '\n---------------'
         Aset[Fsub_i].x_F = results.x
         Aset[Fsub_i].b_F = results.fun
-        Aset[Fsub_i].eflag = 1 if results.success else 0
+        Aset[Fsub_i].eflag = 1 if results.success and results.status == 0 else 0
 
         funCall = funCall + 1
 
         # rounding integers
-        aa = np.where(np.abs(np.round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
-        Aset[Fsub_i].x_F[aa] = np.round(Aset[Fsub_i].x_F[aa])
+        if Aset[Fsub_i].eflag == 1:
+            aa = np.where(np.abs(np.round(Aset[Fsub_i].x_F) - Aset[Fsub_i].x_F) <= 1e-06)
+            Aset[Fsub_i].x_F[aa] = np.round(Aset[Fsub_i].x_F[aa])
 
-        if _iter == 1:
-            x_best_relax = Aset[Fsub_i].x_F
-            f_best_relax = Aset[Fsub_i].b_F
+            if _iter == 1:
+                x_best_relax = Aset[Fsub_i].x_F
+                f_best_relax = Aset[Fsub_i].b_F
 
         if ((Aset[Fsub_i].eflag >= 1) and (Aset[Fsub_i].b_F < U_best)):
             if np.linalg.norm(Aset[Fsub_i].x_F[range(num_int)] - np.round(Aset[Fsub_i].x_F[range(num_int)])) <= 1e-06:
@@ -463,8 +466,8 @@ if __name__ == "__main__":
     A = constraints[0]
     b = constraints[1]
 
-    Aeq = np.ndarray(shape=(0,0))
-    beq = np.ndarray(shape=(0,0))
+    Aeq = np.ndarray(shape=(0, 0))
+    beq = np.ndarray(shape=(0, 0))
 
     J = data.inputs.DVector.shape[0]  # number of routes
     K = len(data.inputs.AvailPax)     # number of aircraft types
@@ -481,7 +484,7 @@ if __name__ == "__main__":
 
     # indices into A matrix for continuous & integer/continuous variables
     ind_conCon = range(2*J)
-    ind_intCon = range(2*J, len(constraints[0])+1)
+    ind_intCon = range(2*J, len(constraints[0]))
 
     # call the branch and cut algorithm to solve the MILP problem
     branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
