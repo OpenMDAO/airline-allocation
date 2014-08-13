@@ -349,8 +349,9 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
     Aset.append(prob)
 
     while len(Aset) > 0 and ter_crit != 2:
-
+        print '-------------------------------------------------------------'
         _iter = _iter + 1
+        print '_iter:', _iter
 
         # pick a subproblem
         # preference given to nodes with higher objective value
@@ -370,7 +371,17 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
         # print 'results:\n---------------\n', results, '\n---------------'
         Aset[Fsub_i].x_F = results.x
         Aset[Fsub_i].b_F = results.fun
-        Aset[Fsub_i].eflag = 1 if results.success and results.status == 0 else 0
+        # translate status to MATLAB equivalent exit flag
+        if results.status == 0:         # optimized
+            Aset[Fsub_i].eflag = 1
+        elif results.status == 1:       # max iterations
+            Aset[Fsub_i].eflag = 0
+        elif results.status == 2:       # infeasible
+            Aset[Fsub_i].eflag = -2
+        elif results.status == 3:       # unbounded
+            Aset[Fsub_i].eflag = -3
+        else:
+            Aset[Fsub_i].eflag = -1
 
         funCall = funCall + 1
 
@@ -383,7 +394,11 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 x_best_relax = Aset[Fsub_i].x_F
                 f_best_relax = Aset[Fsub_i].b_F
 
+        print 'eflag:', Aset[Fsub_i].eflag, 'b_F:', Aset[Fsub_i].b_F, 'U_best:', U_best
         if ((Aset[Fsub_i].eflag >= 1) and (Aset[Fsub_i].b_F < U_best)):
+            # print 'Aset[Fsub_i].x_F[range(num_int)]\n', Aset[Fsub_i].x_F[range(num_int)]
+            # print 'np.round(Aset[Fsub_i].x_F[range(num_int)])\n', np.round(Aset[Fsub_i].x_F[range(num_int)])
+            print 'norm', np.linalg.norm(Aset[Fsub_i].x_F[range(num_int)] - np.round(Aset[Fsub_i].x_F[range(num_int)]))
             if np.linalg.norm(Aset[Fsub_i].x_F[range(num_int)] - np.round(Aset[Fsub_i].x_F[range(num_int)])) <= 1e-06:
                 can_x = [can_x, Aset[Fsub_i].x_F]
                 can_F = [can_F, Aset[Fsub_i].b_F]
@@ -412,17 +427,16 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
                 x_ind_maxfrac = np.argmax(np.remainder(np.abs(Aset[Fsub_i].x_F[range(num_int)]), 1))
                 x_split = Aset[Fsub_i].x_F[x_ind_maxfrac]
                 print '\nBranching at tree: %d at x%d = %f\n' % (Aset[Fsub_i].tree, x_ind_maxfrac, x_split)
-                F_sub = []
-                for jj in range(2):
-                    F_sub.append(copy.deepcopy(Aset[Fsub_i]))
+                F_sub = [None, None]
+                for jj in 0, 1:
+                    F_sub[jj] = copy.deepcopy(Aset[Fsub_i])
                     A_rw_add = np.zeros(len(Aset[Fsub_i].x_F))
                     if jj == 0:
                         A_con = 1
                         b_con = np.floor(x_split)
-                    else:
-                        if jj == 1:
-                            A_con = -1
-                            b_con = -np.ceil(x_split)
+                    elif jj == 1:
+                        A_con = -1
+                        b_con = -np.ceil(x_split)
 
                     A_rw_add[x_ind_maxfrac] = A_con
                     A_up = np.concatenate((F_sub[jj].A, [A_rw_add]))
@@ -437,10 +451,13 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
         else:
             del Aset[Fsub_i]  # Fathomed by infeasibility or bounds
 
+        print 'ter_crit:', ter_crit
+        print 'Aset size:', len(Aset)
+
     if ter_crit > 0:
         eflag = 1
-        xopt = x_best.copy()
-        fopt = U_best.copy()
+        xopt = x_best
+        fopt = U_best
         if ter_crit == 1:
             print '\nSolution found but is not within %0.1f%% of the best relaxed solution!\n' % opt_cr*100
         elif ter_crit == 2:
