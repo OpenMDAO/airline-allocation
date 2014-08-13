@@ -277,7 +277,7 @@ def cut_plane(x, A, b, Aeq, beq, ind_con, ind_int, indeq_con, indeq_int, num_int
     return A_up, b_up
 
 
-def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon, indeq_conCon, indeq_intCon):
+def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, indeq_conCon, indeq_intCon):
     """ This is the branch and cut algorithm
 
         INPUTS:
@@ -289,8 +289,6 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
             Aeq, beq - Coefficient matrix for linear equality constraints Aeqx = beq
 
             lb, ub - Lower and upper bounds on the design variables
-
-            x0 -  Initial x
 
             ind_conCon - indices in the A matrix correspoding to the
             constraints containing only continuous type design variables
@@ -339,7 +337,6 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0, ind_conCon, ind_intCon,
     prob.beq = beq
     prob.lb = lb
     prob.ub = ub
-    prob.x0 = x0
     prob.b_F = 0
     prob.x_F = []
     prob.node = node_num
@@ -496,13 +493,10 @@ if __name__ == "__main__":
         np.ones((K*J, 1)) * np.inf
     ))
 
-    # initial x
-    x0 = []
-
     # indices into A matrix for continuous & integer/continuous variables
     ind_conCon = range(2*J)
     ind_intCon = range(2*J, len(constraints[0]))
 
     # call the branch and cut algorithm to solve the MILP problem
-    branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
+    branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
                ind_conCon, ind_intCon, [], [])

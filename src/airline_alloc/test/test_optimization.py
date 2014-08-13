@@ -335,15 +335,12 @@ class BranchCutTestCase(unittest.TestCase):
             np.ones((K*J, 1)) * np.inf
         ))
 
-        # initial x
-        x0 = []
-
         # indices into A matrix for continuous & integer/continuous variables
         ind_conCon = range(2*J)
         ind_intCon = range(2*J, len(constraints[0]))
 
         # call the branch and cut algorithm to solve the MILP problem
-        branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, x0,
+        branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
                    ind_conCon, ind_intCon, [], [])
 
 
