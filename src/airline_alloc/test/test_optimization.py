@@ -308,8 +308,7 @@ class BranchCutTestCase(unittest.TestCase):
     """ test the branch_cut function
     """
 
-    def test_branch_cut(self):
-
+    def test_3routes(self):
         data = Dataset(suffix='after_3routes')
 
         # linear objective coefficients
@@ -340,8 +339,44 @@ class BranchCutTestCase(unittest.TestCase):
         ind_intCon = range(2*J, len(constraints[0]))
 
         # call the branch and cut algorithm to solve the MILP problem
-        branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
-                   ind_conCon, ind_intCon, [], [])
+        xopt, fopt, can_x, can_F, x_best_relax, f_best_relax, funCall, eflag = \
+            branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
+                       ind_conCon, ind_intCon, [], [])
+
+        # TODO: check return values against MATLAB results
+
+
+class OutputTestCase(unittest.TestCase):
+    """ test the output function
+    """
+    def compare(self, dataset1, dataset2):
+        # check that the dataset matches the output dataset
+
+        self.assertTrue(np.allclose(dataset1.outputs.Cost,    dataset2.outputs.Cost),
+            msg='\n' + str(dataset1.outputs.Cost) + '\n' + str(dataset2.outputs.Cost))
+
+        self.assertTrue(np.allclose(dataset1.coefficients.PPNM,  dataset2.coefficients.PPNM),
+            msg='\n' + str(dataset1.coefficients.PPNM) + '\n' + str(dataset2.coefficients.PPNM))
+
+        self.assertTrue(np.allclose(dataset1.coefficients.Profit,       dataset2.coefficients.Profit),
+            msg='\n' + str(dataset1.coefficients.Profit) + '\n' + str(dataset2.coefficients.Profit))
+
+        self.assertTrue(np.allclose(dataset1.coefficients.Info,       dataset2.coefficients.Info),
+            msg='\n' + str(dataset1.coefficients.Info) + '\n' + str(dataset2.coefficients.Info))
+
+        # TODO: compare Trips, FleetUsed, Fuel, Doc, BlockTime, Nox, Maxpax, Pax, Miles
+        #               CostDetail, RevDetail, PaxDetail, RevArray, CostArray, PaxArray, ProfitArray, Revenue
+
+    def test_3routes(self):
+        dataset = Dataset(suffix='before_3routes')
+        dataout = Dataset(suffix='after_3routes')   # TODO: this dataset is probably not post-solution, check it
+
+        xopt = np.array([0, 3, 2, 2, 3, 0, 0, 321, 214, 244, 366, 0])
+        fopt = -1.9417e+04
+
+        generate_outputs(xopt, fopt, dataset)
+
+        self.compare(dataset, dataout)
 
 
 if __name__ == "__main__":

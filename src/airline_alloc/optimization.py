@@ -61,7 +61,7 @@ def get_constraints(data):
 
     # Upper demand constraint
     A1 = np.zeros((J, KJ2))
-    b1 = dem.copy()
+    b1 = dem
     for jj in xrange(J):
         for kk in xrange(K):
             col = K*J + kk*J + jj
@@ -98,7 +98,6 @@ def get_constraints(data):
 
     A = np.concatenate((A1, A2, A3, A4))
     b = np.concatenate((b1, b2, b3, b4))
-
     return A, b
 
 
@@ -300,7 +299,6 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
             xopt - optimal x with integer soltuion.
             fopt - optimal objective funtion value
             can_x - list of candidate solutions x that are feasible (i.e satisfies integer constraint)
-
             can_F - Corresponding list of objective function values
             x_best_relax - x value of the relaxed problem (i.e no integer constraint)
             f_best_relax - Objective fucntion value of the relaxed problem
@@ -465,6 +463,83 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
     return xopt, fopt, can_x, can_F, x_best_relax, f_best_relax, funCall, eflag
 
 
+def generate_outputs(xopt, fopt, data):
+    """ Generating Outputss from GAMS allocation solution
+        (from 'OutputGen_AllCon.m')
+
+        TODO: this is just a blind port of the code... needs debugged/tested
+    """
+
+    J = data.inputs.DVector.shape[0]  # number of routes
+    K = len(data.inputs.AvailPax)     # number of aircraft types
+    KJ  = K*J
+
+    x_hat = xopt[1:KJ]                # Airline allocation variable
+    aa = np.where(np.abs(x_hat - 0) < 1e-06)
+    x_hat[aa] = 0
+    pax = xopt[KJ+1:KJ*2]
+    bb = np.where(np.abs(pax - 0) < 1e-06)
+    pax[bb] = 0
+
+    RVector   = data.inputs.RVector
+    kk        = data.inputs.kk
+
+    detailtrips = np.zeros((K, J))
+    pax_rep     = np.zeros((K, J))
+    for k in range(K):
+        for j in range(J):
+            ind = (k - 1) * J + j
+            detailtrips[k, j] = 2*x_hat[ind]
+            pax_rep[k, j] = 2*pax[ind]
+
+    r, c = detailtrips.shape
+    data.outputs.DetailTrips = detailtrips
+
+    for i in range(r):
+        aa[i, 0] = len(np.where(detailtrips[i, :] != 0))
+        data.outputs.Trips[i, 0]     = np.sum(detailtrips[i, :])
+        data.outputs.FleetUsed[i, 0] = np.ceil(np.sum(data.coefficients.BlockTime[i, :].dot((1+data.constants.MH[i, 0])).dot(detailtrips[i, :]) + detailtrips[i, :].dot(data.inputs.TurnAround)) / 24)
+        data.outputs.Fuel[i, 0]      = np.sum(data.coefficients.Fuelburn[i, :].dot(detailtrips[i, :]))
+        data.outputs.Doc[i, 0]       = np.sum(data.coefficients.Doc[i, :].dot(detailtrips[i, :]))
+        data.outputs.BlockTime[i, 0] = np.sum(data.coefficients.BlockTime[i, :].dot(detailtrips[i, :]))
+        data.outputs.Nox[i, 0]       = np.sum(data.coefficients.Nox[i, :].dot(detailtrips[i, :]))
+        data.outputs.Maxpax[i, 0]    = np.sum(data.inputs.AvailPax[i, 0].dot(detailtrips[i, :]))
+        data.outputs.Pax[i, 0]       = np.sum(pax_rep[i, :])
+        data.outputs.Miles[i, 0]     = np.sum(pax_rep[i, :].dot(RVector.T))
+
+    data.outputs.CostDetail  = data.coefficients.Doc.dot(detailtrips) + data.coefficients.Fuelburn.dot(data.constants.FuelCost(kk)).dot(detailtrips)
+    data.outputs.RevDetail   = data.outputs.TicketPrice.dot(pax_rep)
+    data.outputs.PaxDetail   = pax_rep
+    data.outputs.RevArray    = np.sum(data.outputs.RevDetail, 1)
+    data.outputs.CostArray   = np.sum(data.outputs.CostDetail, 1)
+    data.outputs.PaxArray    = np.sum(pax_rep, 1)
+    data.outputs.ProfitArray = data.outputs.RevArray - data.outputs.CostArray
+    data.outputs.Revenue     = np.sum(data.outputs.RevDetail, 2)
+
+    # record a/c performance
+    PPNM        = np.zeros((1, K))
+    ProfitArray = data.outputs.ProfitArray
+    profit_v    = np.sum(ProfitArray.T)
+
+    den_v = np.sum(data.outputs.PaxArray.dot(RVector.T))
+    PPNM  = profit_v / den_v
+    for i in range(len(PPNM)):
+        if np.isnan(PPNM[i]):
+            PPNM[i] = 0
+
+    data.outputs.Cost   = np.sum(data.outputs.Doc + data.outputs.Fuel.dot(data.constants.FuelCost[kk]))
+    data.outputs.PPNM   = PPNM
+    data.outputs.Profit = np.sum(data.outputs.RevArray - data.outputs.CostArray)
+
+    # allocation detail info
+    for i in range(len(RVector)):
+        a = np.where(detailtrips[:, i])
+        info = np.array([a, detailtrips[a, i], pax_rep[a, i]])
+        data.outputs.Info[i, 0] = [info]
+
+    return data.outputs
+
+
 if __name__ == "__main__":
 
     from dataset import Dataset
@@ -480,6 +555,7 @@ if __name__ == "__main__":
     A = constraints[0]
     b = constraints[1]
 
+    # there are no equality constraints
     Aeq = np.ndarray(shape=(0, 0))
     beq = np.ndarray(shape=(0, 0))
 
@@ -498,5 +574,19 @@ if __name__ == "__main__":
     ind_intCon = range(2*J, len(constraints[0]))
 
     # call the branch and cut algorithm to solve the MILP problem
-    branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
-               ind_conCon, ind_intCon, [], [])
+    xopt, fopt, can_x, can_F, x_best_relax, f_best_relax, funCall, eflag = \
+        branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
+                   ind_conCon, ind_intCon, [], [])
+
+    print 'xopt:\n', xopt
+    print 'fopt:', fopt
+
+    # generate outputs
+    outputs = generate_outputs()
+
+    print 'Cost:  ', outputs.Cost
+    print 'PPNM:  ', outputs.PPNM
+    print 'Profit:', outputs.Profit
+
+    print 'DetailTrips:', outputs.DetailTrips
+    print 'DetailPax:  ', outputs.PaxDetail
