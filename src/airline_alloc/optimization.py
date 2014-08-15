@@ -355,6 +355,13 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
             if Aset[ii].b_F >= Fsub:
                 Fsub_i = ii
                 Fsub = Aset[ii].b_F
+                print 'choosing Fsub', ii, 'with b_F =', Aset[ii].b_F
+
+        print 'f: (%s)\n' % str(Aset[Fsub_i].f.shape), Aset[Fsub_i].f
+        print 'A: (%s)\n' % str(Aset[Fsub_i].A.shape), Aset[Fsub_i].A
+        print 'b: (%s)' % str(Aset[Fsub_i].b.shape), Aset[Fsub_i].b
+        print 'lb: ', Aset[Fsub_i].lb.flatten()
+        print 'ub: ', Aset[Fsub_i].ub.flatten()
 
         # solve subproblem using linprog
         bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
@@ -362,7 +369,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
                           A_eq=None,           b_eq=None,
                           A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
                           bounds=bounds,
-                          options={ 'maxiter': 100, 'disp': True })
+                          options={ 'maxiter': 1000, 'disp': True })
         # print 'results:\n---------------\n', results, '\n---------------'
         Aset[Fsub_i].x_F = results.x
         Aset[Fsub_i].b_F = results.fun
@@ -390,6 +397,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
                 f_best_relax = Aset[Fsub_i].b_F
 
         print 'eflag:', Aset[Fsub_i].eflag, 'b_F:', Aset[Fsub_i].b_F, 'U_best:', U_best
+
         if ((Aset[Fsub_i].eflag >= 1) and (Aset[Fsub_i].b_F < U_best)):
             # print 'Aset[Fsub_i].x_F[range(num_int)]\n', Aset[Fsub_i].x_F[range(num_int)]
             # print 'np.round(Aset[Fsub_i].x_F[range(num_int)])\n', np.round(Aset[Fsub_i].x_F[range(num_int)])
@@ -408,20 +416,20 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
                     ter_crit = 2
             else:
                 # apply cut to subproblem
-                if Aset[Fsub_i].node != 1:
-                    Aset[Fsub_i].A, Aset[Fsub_i].b = cut_plane(
-                        Aset[Fsub_i].x_F,
-                        Aset[Fsub_i].A, Aset[Fsub_i].b,
-                        Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
-                        ind_conCon, ind_intCon,
-                        indeq_conCon, indeq_intCon,
-                        num_int
-                    )
+                # if Aset[Fsub_i].node != 1:
+                #     Aset[Fsub_i].A, Aset[Fsub_i].b = cut_plane(
+                #         Aset[Fsub_i].x_F,
+                #         Aset[Fsub_i].A, Aset[Fsub_i].b,
+                #         Aset[Fsub_i].Aeq, Aset[Fsub_i].beq,
+                #         ind_conCon, ind_intCon,
+                #         indeq_conCon, indeq_intCon,
+                #         num_int
+                #     )
 
                 # branching
                 x_ind_maxfrac = np.argmax(np.remainder(np.abs(Aset[Fsub_i].x_F[range(num_int)]), 1))
                 x_split = Aset[Fsub_i].x_F[x_ind_maxfrac]
-                print '\nBranching at tree: %d at x%d = %f\n' % (Aset[Fsub_i].tree, x_ind_maxfrac, x_split)
+                print '\nBranching at tree: %d at x%d = %f\n' % (Aset[Fsub_i].tree, x_ind_maxfrac+1, x_split)
                 F_sub = [None, None]
                 for jj in 0, 1:
                     F_sub[jj] = copy.deepcopy(Aset[Fsub_i])
@@ -438,7 +446,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
                     b_up = np.append(F_sub[jj].b, b_con)
                     F_sub[jj].A = A_up
                     F_sub[jj].b = b_up
-                    F_sub[jj].tree = 10 * F_sub[jj].tree + jj
+                    F_sub[jj].tree = 10 * F_sub[jj].tree + (jj+1)
                     node_num = node_num + 1
                     F_sub[jj].node = node_num
                 del Aset[Fsub_i]
