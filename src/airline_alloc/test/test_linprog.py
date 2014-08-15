@@ -1,25 +1,25 @@
 
 import unittest
+from unittest import SkipTest
 
 import numpy as np
 from numpy import inf
 
-try:
-    from scipy.optimize import linprog
-except ImportError, e:
-    print "SciPy version >= 0.15.0 is required for linprog support!!"
-    pass
+np.set_printoptions(linewidth=240, suppress=True)
 
 
 class LinearProgramTestCase(unittest.TestCase):
-    """ test the linprog function
+    """ test linear program solvers
     """
 
-    def test_linprog(self):
-        f = np.array(
+    def setUp(self):
+        """ define the problem
+        """
+
+        self.f = np.array(
             [ 30078.18010747,  23390.74548188,  16779.05660923,  35794.3199911,   28282.05913705,  20794.61312494,   -295.86821908,   -235.33496386,   -176.7478392,    -308.77010256,   -248.29363982,   -188.59604081])
 
-        A = np.array([
+        self.A = np.array([
             [   0.,            0.,            0.,            0.,            0.,            0.,            1.,            0.,            0.,            1.,            0.,            0.        ],
             [   0.,            0.,            0.,            0.,            0.,            0.,            0.,            1.,            0.,            0.,            1.,            0.        ],
             [   0.,            0.,            0.,            0.,            0.,            0.,            0.,            0.,            1.,            0.,            0.,            1.        ],
@@ -43,7 +43,7 @@ class LinearProgramTestCase(unittest.TestCase):
             [   0.,            0.,            0.,           -1.,            0.,            0.,            0.,            0.,            0.,            0.,            0.,            0.        ]
         ])
 
-        b = np.array([
+        self.b = np.array([
             [  300.],
             [  700.],
             [  220.],
@@ -67,18 +67,68 @@ class LinearProgramTestCase(unittest.TestCase):
             [   -2.]
         ])
 
-        lb = np.array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
-        ub = np.array([ 12.,  12.,  12.,   8.,   8.,   8.,  inf,  inf,  inf,  inf,  inf,  inf])
+        self.lb = np.array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
+        self.ub = np.array([ 12.,  12.,  12.,   8.,   8.,   8.,  inf,  inf,  inf,  inf,  inf,  inf])
 
-        Aeq = np.ndarray(shape=(0, 0))
-        beq = np.ndarray(shape=(0, 0))
+        self.Aeq = np.ndarray(shape=(0, 0))
+        self.beq = np.ndarray(shape=(0, 0))
 
-        results = linprog(f,
-                          A_eq=Aeq, b_eq=beq,
-                          A_ub=A,   b_ub=b,
-                          bounds=zip(lb, ub),
+    def test_linprog(self):
+        """ test the scipy linprog function
+
+            (https://github.com/scipy/scipy)
+        """
+
+        try:
+            from scipy.optimize import linprog
+        except ImportError:
+            raise SkipTest('SciPy version >= 0.15.0 is required for linprog support!!')
+
+        print '\n------------------------------ SciPy linprog ------------------------------'
+        results = linprog(self.f,
+                          A_eq=self.Aeq, b_eq=self.beq,
+                          A_ub=self.A,   b_ub=self.b,
+                          bounds=zip(self.lb, self.ub),
                           options={ 'maxiter': 100, 'disp': True })
         print results
+        print 'x:', np.round(results.x, decimals=2)
+
+    def test_cvxopt(self):
+        """ test the cvxopt lp solver
+
+            (https://github.com/cvxopt/cvxopt/)
+        """
+
+        try:
+            from cvxopt import matrix, solvers
+        except ImportError:
+            raise SkipTest('cvxopt is not available')
+
+        print '\n------------------------------ cvxopt lp ------------------------------'
+        results = solvers.lp(matrix(self.f), matrix(self.A), matrix(self.b))
+        print results
+        print 'x:', np.round(results['x'], decimals=2).reshape(1, -1)
+
+    def test_cvxopt_glpk(self):
+        """ test the cvxopt lp solver with glpk
+
+            (https://github.com/cvxopt/cvxopt/)
+            (http://cvxopt.org/userguide/coneprog.html#optional-solvers)
+            (https://www.gnu.org/software/glpk/glpk.html)
+        """
+
+        try:
+            from cvxopt import matrix, solvers
+        except ImportError:
+            raise SkipTest('cvxopt is not available')
+
+        print '\n------------------------------ cvxopt lp glpk ------------------------------'
+        try:
+            results = solvers.lp(matrix(self.f), matrix(self.A), matrix(self.b), solver='glpk')
+            print results
+            print 'x:', np.round(results['x'], decimals=2).reshape(1, -1)
+        except ValueError, err:
+            raise SkipTest(err)
 
 
 if __name__ == "__main__":
