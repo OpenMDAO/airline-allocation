@@ -8,11 +8,23 @@
 import numpy as np
 import copy
 
-try:
-    from scipy.optimize import linprog
-except ImportError, e:
-    print "SciPy version >= 0.15.0 is required for linprog support!!"
-    pass
+solver = 'lpsolve'
+
+if solver == 'linprog':
+    try:
+        from scipy.optimize import linprog
+    except ImportError, e:
+        print "SciPy version >= 0.15.0 is required for linprog support!!"
+        exit(-1)
+elif solver == 'lpsolve':
+    try:
+        from lpsolve55 import *
+    except ImportError:
+        print 'lpsolve is not available'
+        exit(-1)
+else:
+    print 'You must choose an available LP solver'
+    exit(-1)
 
 np.set_printoptions(linewidth=240)
 
@@ -328,15 +340,15 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
         pass
 
     prob = Problem()
-    prob.f = f
-    prob.A = A
-    prob.b = b
-    prob.Aeq = Aeq
-    prob.beq = beq
-    prob.lb = lb
-    prob.ub = ub
-    prob.b_F = 0
-    prob.x_F = []
+    prob.f    = f
+    prob.A    = A
+    prob.b    = b
+    prob.Aeq  = Aeq
+    prob.beq  = beq
+    prob.lb   = lb
+    prob.ub   = ub
+    prob.b_F  = 0
+    prob.x_F  = []
     prob.node = node_num
     prob.tree = tree
 
@@ -355,35 +367,64 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
             if Aset[ii].b_F >= Fsub:
                 Fsub_i = ii
                 Fsub = Aset[ii].b_F
-                print 'choosing Fsub', ii, 'with b_F =', Aset[ii].b_F
 
-        print 'f: (%s)\n' % str(Aset[Fsub_i].f.shape), Aset[Fsub_i].f
-        print 'A: (%s)\n' % str(Aset[Fsub_i].A.shape), Aset[Fsub_i].A
-        print 'b: (%s)' % str(Aset[Fsub_i].b.shape), Aset[Fsub_i].b
-        print 'lb: ', Aset[Fsub_i].lb.flatten()
-        print 'ub: ', Aset[Fsub_i].ub.flatten()
+        if solver == 'linprog':
+            # solve subproblem using linprog
+            bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
+            results = linprog(Aset[Fsub_i].f,
+                              A_eq=None,           b_eq=None,
+                              A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
+                              bounds=bounds,
+                              options={ 'maxiter': 1000, 'disp': True })
 
-        # solve subproblem using linprog
-        bounds = zip(Aset[Fsub_i].lb.flatten(), Aset[Fsub_i].ub.flatten())
-        results = linprog(Aset[Fsub_i].f,
-                          A_eq=None,           b_eq=None,
-                          A_ub=Aset[Fsub_i].A, b_ub=Aset[Fsub_i].b,
-                          bounds=bounds,
-                          options={ 'maxiter': 1000, 'disp': True })
-        # print 'results:\n---------------\n', results, '\n---------------'
-        Aset[Fsub_i].x_F = results.x
-        Aset[Fsub_i].b_F = results.fun
-        # translate status to MATLAB equivalent exit flag
-        if results.status == 0:         # optimized
-            Aset[Fsub_i].eflag = 1
-        elif results.status == 1:       # max iterations
-            Aset[Fsub_i].eflag = 0
-        elif results.status == 2:       # infeasible
-            Aset[Fsub_i].eflag = -2
-        elif results.status == 3:       # unbounded
-            Aset[Fsub_i].eflag = -3
+            Aset[Fsub_i].x_F = results.x
+            Aset[Fsub_i].b_F = results.fun
+
+            # translate status to MATLAB equivalent exit flag
+            if results.status == 0:         # optimized
+                Aset[Fsub_i].eflag = 1
+            elif results.status == 1:       # max iterations
+                Aset[Fsub_i].eflag = 0
+            elif results.status == 2:       # infeasible
+                Aset[Fsub_i].eflag = -2
+            elif results.status == 3:       # unbounded
+                Aset[Fsub_i].eflag = -3
+            else:
+                Aset[Fsub_i].eflag = -1
+        elif solver == 'lpsolve':
+            # solve using lpsolve
+            obj = Aset[Fsub_i].f.tolist()
+            lp = lpsolve('make_lp', 0, len(obj))
+            lpsolve('set_verbose', lp, 'IMPORTANT')
+            lpsolve('set_obj_fn', lp, obj)
+
+            i = 0
+            for con in Aset[Fsub_i].A:
+                lpsolve('add_constraint', lp, con.tolist(), 'LE', Aset[Fsub_i].b[i])
+                i = i+1
+
+            for i in range (len(Aset[Fsub_i].lb)):
+                lpsolve('set_lowbo', lp, i+1,  Aset[Fsub_i].lb[i])
+                lpsolve('set_upbo',  lp, i+1, Aset[Fsub_i].ub[i])
+
+            results = lpsolve('solve', lp)
+
+            Aset[Fsub_i].x_F = np.array(lpsolve('get_variables', lp)[0])
+            Aset[Fsub_i].b_F = np.array(lpsolve('get_objective', lp))
+
+            # translate results to MATLAB equivalent exit flag
+            if results == 0:            # optimized
+                Aset[Fsub_i].eflag = 1
+            elif results == 2:          # infeasible
+                Aset[Fsub_i].eflag = -2
+            elif results == 3:          # unbounded
+                Aset[Fsub_i].eflag = -3
+            else:
+                Aset[Fsub_i].eflag = -1
+            lpsolve('delete_lp', lp)
         else:
-            Aset[Fsub_i].eflag = -1
+            print 'You must choose an available LP solver'
+            exit(-1)
 
         funCall = funCall + 1
 
@@ -396,12 +437,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
                 x_best_relax = Aset[Fsub_i].x_F
                 f_best_relax = Aset[Fsub_i].b_F
 
-        print 'eflag:', Aset[Fsub_i].eflag, 'b_F:', Aset[Fsub_i].b_F, 'U_best:', U_best
-
         if ((Aset[Fsub_i].eflag >= 1) and (Aset[Fsub_i].b_F < U_best)):
-            # print 'Aset[Fsub_i].x_F[range(num_int)]\n', Aset[Fsub_i].x_F[range(num_int)]
-            # print 'np.round(Aset[Fsub_i].x_F[range(num_int)])\n', np.round(Aset[Fsub_i].x_F[range(num_int)])
-            print 'norm', np.linalg.norm(Aset[Fsub_i].x_F[range(num_int)] - np.round(Aset[Fsub_i].x_F[range(num_int)]))
             if np.linalg.norm(Aset[Fsub_i].x_F[range(num_int)] - np.round(Aset[Fsub_i].x_F[range(num_int)])) <= 1e-06:
                 can_x = [can_x, Aset[Fsub_i].x_F]
                 can_F = [can_F, Aset[Fsub_i].b_F]
@@ -454,9 +490,6 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
         else:
             del Aset[Fsub_i]  # Fathomed by infeasibility or bounds
 
-        print 'ter_crit:', ter_crit
-        print 'Aset size:', len(Aset)
-
     if ter_crit > 0:
         eflag = 1
         xopt = x_best
@@ -475,18 +508,24 @@ def generate_outputs(xopt, fopt, data):
     """ Generating Outputss from GAMS allocation solution
         (from 'OutputGen_AllCon.m')
 
-        TODO: this is just a blind port of the code... needs debugged/tested
+        TODO: port of the MATLAB code... needs debugged/tested
     """
+
+    class Outputs(object):
+        pass
+
+    outputs = Outputs()
 
     J = data.inputs.DVector.shape[0]  # number of routes
     K = len(data.inputs.AvailPax)     # number of aircraft types
     KJ  = K*J
 
-    x_hat = xopt[1:KJ]                # Airline allocation variable
-    aa = np.where(np.abs(x_hat - 0) < 1e-06)
+    x_hat = xopt[0:KJ]                # Airline allocation variable
+    aa = np.where(np.abs(x_hat - 0.) < 1e-06)[0]
     x_hat[aa] = 0
+
     pax = xopt[KJ+1:KJ*2]
-    bb = np.where(np.abs(pax - 0) < 1e-06)
+    bb = np.where(np.abs(pax - 0.) < 1e-06)[0]
     pax[bb] = 0
 
     RVector   = data.inputs.RVector
@@ -501,47 +540,56 @@ def generate_outputs(xopt, fopt, data):
             pax_rep[k, j] = 2*pax[ind]
 
     r, c = detailtrips.shape
-    data.outputs.DetailTrips = detailtrips
+    outputs.DetailTrips = detailtrips
+
+    outputs.Trips     = np.zeros((r, 1))
+    outputs.FleetUsed = np.zeros((r, 1))
+    outputs.Fuel      = np.zeros((r, 1))
+    outputs.Doc       = np.zeros((r, 1))
+    outputs.BlockTime = np.zeros((r, 1))
+    outputs.Nox       = np.zeros((r, 1))
+    outputs.Maxpax    = np.zeros((r, 1))
+    outputs.Pax       = np.zeros((r, 1))
+    outputs.Miles     = np.zeros((r, 1))
 
     for i in range(r):
-        aa[i, 0] = len(np.where(detailtrips[i, :] != 0))
-        data.outputs.Trips[i, 0]     = np.sum(detailtrips[i, :])
-        data.outputs.FleetUsed[i, 0] = np.ceil(np.sum(data.coefficients.BlockTime[i, :].dot((1+data.constants.MH[i, 0])).dot(detailtrips[i, :]) + detailtrips[i, :].dot(data.inputs.TurnAround)) / 24)
-        data.outputs.Fuel[i, 0]      = np.sum(data.coefficients.Fuelburn[i, :].dot(detailtrips[i, :]))
-        data.outputs.Doc[i, 0]       = np.sum(data.coefficients.Doc[i, :].dot(detailtrips[i, :]))
-        data.outputs.BlockTime[i, 0] = np.sum(data.coefficients.BlockTime[i, :].dot(detailtrips[i, :]))
-        data.outputs.Nox[i, 0]       = np.sum(data.coefficients.Nox[i, :].dot(detailtrips[i, :]))
-        data.outputs.Maxpax[i, 0]    = np.sum(data.inputs.AvailPax[i, 0].dot(detailtrips[i, :]))
-        data.outputs.Pax[i, 0]       = np.sum(pax_rep[i, :])
-        data.outputs.Miles[i, 0]     = np.sum(pax_rep[i, :].dot(RVector.T))
+        outputs.Trips     [i, 0] = np.sum(detailtrips[i, :])
+        outputs.FleetUsed [i, 0] = np.ceil(np.sum(data.coefficients.BlockTime[i, :].dot((1+data.constants.MH[i, 0])).dot(detailtrips[i, :]) + detailtrips[i, :].dot(data.inputs.TurnAround)) / 24)
+        outputs.Fuel      [i, 0] = np.sum(data.coefficients.Fuelburn[i, :].dot(detailtrips[i, :]))
+        outputs.Doc       [i, 0] = np.sum(data.coefficients.Doc[i, :].dot(detailtrips[i, :]))
+        outputs.BlockTime [i, 0] = np.sum(data.coefficients.BlockTime[i, :].dot(detailtrips[i, :]))
+        outputs.Nox       [i, 0] = np.sum(data.coefficients.Nox[i, :].dot(detailtrips[i, :]))
+        outputs.Maxpax    [i, 0] = np.sum(data.inputs.AvailPax[i, 0].dot(detailtrips[i, :]))
+        outputs.Pax       [i, 0] = np.sum(pax_rep[i, :])
+        outputs.Miles     [i, 0] = np.sum(pax_rep[i, :].dot(RVector.T))
 
-    data.outputs.CostDetail  = data.coefficients.Doc.dot(detailtrips) + data.coefficients.Fuelburn.dot(data.constants.FuelCost(kk)).dot(detailtrips)
-    data.outputs.RevDetail   = data.outputs.TicketPrice.dot(pax_rep)
-    data.outputs.PaxDetail   = pax_rep
-    data.outputs.RevArray    = np.sum(data.outputs.RevDetail, 1)
-    data.outputs.CostArray   = np.sum(data.outputs.CostDetail, 1)
-    data.outputs.PaxArray    = np.sum(pax_rep, 1)
-    data.outputs.ProfitArray = data.outputs.RevArray - data.outputs.CostArray
-    data.outputs.Revenue     = np.sum(data.outputs.RevDetail, 2)
+    outputs.CostDetail  = data.coefficients.Doc.dot(detailtrips) + data.coefficients.Fuelburn.dot(data.constants.FuelCost(kk)).dot(detailtrips)
+    outputs.RevDetail   = data.outputs.TicketPrice.dot(pax_rep)
+    outputs.PaxDetail   = pax_rep
+    outputs.RevArray    = np.sum(outputs.RevDetail, 1)
+    outputs.CostArray   = np.sum(outputs.CostDetail, 1)
+    outputs.PaxArray    = np.sum(pax_rep, 1)
+    outputs.ProfitArray = outputs.RevArray - outputs.CostArray
+    outputs.Revenue     = np.sum(outputs.RevDetail, 2)
 
     # record a/c performance
     PPNM        = np.zeros((1, K))
-    ProfitArray = data.outputs.ProfitArray
+    ProfitArray = outputs.ProfitArray
     profit_v    = np.sum(ProfitArray.T)
 
-    den_v = np.sum(data.outputs.PaxArray.dot(RVector.T))
+    den_v = np.sum(outputs.PaxArray.dot(RVector.T))
     PPNM  = profit_v / den_v
     for i in range(len(PPNM)):
         if np.isnan(PPNM[i]):
             PPNM[i] = 0
 
-    data.outputs.Cost   = np.sum(data.outputs.Doc + data.outputs.Fuel.dot(data.constants.FuelCost[kk]))
-    data.outputs.PPNM   = PPNM
-    data.outputs.Profit = np.sum(data.outputs.RevArray - data.outputs.CostArray)
+    outputs.Cost   = np.sum(outputs.Doc + outputs.Fuel.dot(data.constants.FuelCost[kk]))
+    outputs.PPNM   = PPNM
+    outputs.Profit = np.sum(outputs.RevArray - outputs.CostArray)
 
     # allocation detail info
     for i in range(len(RVector)):
-        a = np.where(detailtrips[:, i])
+        a = np.where(detailtrips[:, i])[0]
         info = np.array([a, detailtrips[a, i], pax_rep[a, i]])
         data.outputs.Info[i, 0] = [info]
 
@@ -590,7 +638,7 @@ if __name__ == "__main__":
     print 'fopt:', fopt
 
     # generate outputs
-    outputs = generate_outputs()
+    outputs = generate_outputs(xopt, fopt, data)
 
     print 'Cost:  ', outputs.Cost
     print 'PPNM:  ', outputs.PPNM

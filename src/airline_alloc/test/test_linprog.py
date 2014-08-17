@@ -130,6 +130,57 @@ class LinearProgramTestCase(unittest.TestCase):
         except ValueError, err:
             raise SkipTest(err)
 
+    def test_lpsolve(self):
+        """ test lpsolve
+
+            (http://lpsolve.sourceforge.net)
+        """
+
+        try:
+            from lpsolve55 import *
+        except ImportError:
+            raise SkipTest('lpsolve is not available')
+
+        print '\n------------------------------ lpsolve ------------------------------'
+        obj = self.f.tolist()
+        lp = lpsolve('make_lp', 0, len(obj))
+        lpsolve('set_verbose', lp, 'IMPORTANT')
+        lpsolve('set_obj_fn', lp, obj)
+
+        i = 0
+        for con in self.A:
+            lpsolve('add_constraint', lp, con.tolist(), 'LE', self.b[i])
+            i = i+1
+
+        for i in range (len(self.lb)):
+            lpsolve('set_lowbo', lp, i+1, self.lb[i])
+            lpsolve('set_upbo',  lp, i+1, self.ub[i])
+
+        results = lpsolve('solve', lp)
+
+        result_text = [
+            'OPTIMAL      An optimal solution was obtained',
+            'SUBOPTIMAL   The model is sub-optimal. Only happens if there are integer variables and there is already an integer solution found. The solution is not guaranteed the most optimal one.',
+            'INFEASIBLE   The model is infeasible',
+            'UNBOUNDED    The model is unbounded',
+            'DEGENERATE   The model is degenerative',
+            'NUMFAILURE   Numerical failure encountered',
+            'USERABORT    The abort routine returned TRUE. See put_abortfunc',
+            'TIMEOUT      A timeout occurred. A timeout was set via set_timeout',
+            'N/A'
+            'PRESOLVED    The model could be solved by presolve. This can only happen if presolve is active via set_presolve',
+            'PROCFAIL     The B&B routine failed',
+            'PROCBREAK    The B&B was stopped because of a break-at-first (see set_break_at_first) or a break-at-value (see set_break_at_value)',
+            'FEASFOUND    A feasible B&B solution was found',
+            'NOFEASFOUND  No feasible B&B solution found'
+        ]
+
+        print 'results: (%d)' % results, result_text[results]
+        print 'f:', lpsolve('get_objective', lp)
+        print 'x:', lpsolve('get_variables', lp)[0]
+
+        lpsolve('delete_lp', lp)
+
 
 if __name__ == "__main__":
     unittest.main()
