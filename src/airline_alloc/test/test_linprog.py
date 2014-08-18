@@ -10,6 +10,11 @@ np.set_printoptions(linewidth=240, suppress=True)
 
 class LinearProgramTestCase(unittest.TestCase):
     """ test linear program solvers
+
+        NOTE: these tests are meant to evaluate the available linear program
+              solvers for python. 'lpsolve' is currently the only one that
+              can be shown to get the same answer as MATLAB, which is an
+              objective value of 6544.9346 for the given problem.
     """
 
     def setUp(self):

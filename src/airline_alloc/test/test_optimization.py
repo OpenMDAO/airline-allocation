@@ -349,34 +349,81 @@ class BranchCutTestCase(unittest.TestCase):
 class OutputTestCase(unittest.TestCase):
     """ test the output function
     """
-    def compare(self, dataset1, dataset2):
+    def compare(self, outputs1, outputs2):
         # check that the dataset matches the output dataset
 
-        self.assertTrue(np.allclose(dataset1.outputs.Cost, dataset2.outputs.Cost),
-            msg='\n' + str(dataset1.outputs.Cost) + '\n' + str(dataset2.outputs.Cost))
+        self.assertTrue(np.allclose(outputs1.DetailTrips, outputs2.DetailTrips),
+            msg='\n' + str(outputs1.DetailTrips) + '\n' + str(outputs2.DetailTrips))
 
-        self.assertTrue(np.allclose(dataset1.coefficients.PPNM, dataset2.coefficients.PPNM),
-            msg='\n' + str(dataset1.coefficients.PPNM) + '\n' + str(dataset2.coefficients.PPNM))
+        self.assertTrue(np.allclose(outputs1.Trips, outputs2.Trips),
+            msg='\n' + str(outputs1.Trips) + '\n' + str(outputs2.Trips))
 
-        self.assertTrue(np.allclose(dataset1.coefficients.Profit, dataset2.coefficients.Profit),
-            msg='\n' + str(dataset1.coefficients.Profit) + '\n' + str(dataset2.coefficients.Profit))
+        self.assertTrue(np.allclose(outputs1.FleetUsed, outputs2.FleetUsed),
+            msg='\n' + str(outputs1.FleetUsed) + '\n' + str(outputs2.FleetUsed))
 
-        self.assertTrue(np.allclose(dataset1.coefficients.Info, dataset2.coefficients.Info),
-            msg='\n' + str(dataset1.coefficients.Info) + '\n' + str(dataset2.coefficients.Info))
+        self.assertTrue(np.allclose(outputs1.Fuel.flatten(), outputs2.Fuel.flatten()),
+            msg='\n' + str(outputs1.Fuel.flatten()) + '\n' + str(outputs2.Fuel.flatten()))
 
-        # TODO: compare Trips, FleetUsed, Fuel, Doc, BlockTime, Nox, Maxpax, Pax, Miles
-        #               CostDetail, RevDetail, PaxDetail, RevArray, CostArray, PaxArray, ProfitArray, Revenue
+        self.assertTrue(np.allclose(outputs1.Doc.flatten(), outputs2.Doc.flatten()),
+            msg='\n' + str(outputs1.Doc.flatten()) + '\n' + str(outputs2.Doc.flatten()))
+
+        self.assertTrue(np.allclose(outputs1.BlockTime.flatten(), outputs2.BlockTime.flatten()),
+            msg='\n' + str(outputs1.BlockTime.flatten()) + '\n' + str(outputs2.BlockTime.flatten()))
+
+        self.assertTrue(np.allclose(outputs1.Nox.flatten(), outputs2.Nox.flatten()),
+            msg='\n' + str(outputs1.Nox.flatten()) + '\n' + str(outputs2.Nox.flatten()))
+
+        self.assertTrue(np.allclose(outputs1.Maxpax.flatten(), outputs2.Maxpax.flatten()),
+            msg='\n' + str(outputs1.Maxpax.flatten()) + '\n' + str(outputs2.Maxpax.flatten()))
+
+        self.assertTrue(np.allclose(outputs1.Pax.flatten(), outputs2.Pax.flatten()),
+            msg='\n' + str(outputs1.Pax.flatten()) + '\n' + str(outputs2.Pax.flatten()))
+
+        self.assertTrue(np.allclose(outputs1.Miles.flatten(), outputs2.Miles.flatten()),
+            msg='\n' + str(outputs1.Miles.flatten()) + '\n' + str(outputs2.Miles.flatten()))
+
+        self.assertTrue(np.allclose(outputs1.CostDetail, outputs2.CostDetail),
+            msg='\n' + str(outputs1.CostDetail) + '\n' + str(outputs2.CostDetail))
+
+        self.assertTrue(np.allclose(outputs1.RevDetail, outputs2.RevDetail),
+            msg='\n' + str(outputs1.RevDetail) + '\n' + str(outputs2.RevDetail))
+
+        self.assertTrue(np.allclose(outputs1.PaxDetail, outputs2.PaxDetail),
+            msg='\n' + str(outputs1.PaxDetail) + '\n' + str(outputs2.PaxDetail))
+
+        self.assertTrue(np.allclose(outputs1.RevArray, outputs2.RevArray),
+            msg='\n' + str(outputs1.RevArray) + '\n' + str(outputs2.RevArray))
+
+        self.assertTrue(np.allclose(outputs1.CostArray, outputs2.CostArray),
+            msg='\n' + str(outputs1.CostArray) + '\n' + str(outputs2.CostArray))
+
+        self.assertTrue(np.allclose(outputs1.PaxArray, outputs2.PaxArray),
+            msg='\n' + str(outputs1.PaxArray) + '\n' + str(outputs2.PaxArray))
+
+        self.assertTrue(np.allclose(outputs1.ProfitArray, outputs2.ProfitArray),
+            msg='\n' + str(outputs1.ProfitArray) + '\n' + str(outputs2.ProfitArray))
+
+        self.assertTrue(np.allclose(outputs1.Revenue, outputs2.Revenue),
+            msg='\n' + str(outputs1.Revenue) + '\n' + str(outputs2.Revenue))
+
+        self.assertTrue(np.allclose(outputs1.Cost, outputs2.Cost),
+            msg='\n' + str(outputs1.Cost) + '\n' + str(outputs2.Cost))
+
+        self.assertTrue(np.allclose(outputs1.PPNM, outputs2.PPNM),
+            msg='\n' + str(outputs1.PPNM) + '\n' + str(outputs2.PPNM))
+
+        self.assertTrue(np.allclose(outputs1.Profit, outputs2.Profit),
+            msg='\n' + str(outputs1.Profit) + '\n' + str(outputs2.Profit))
 
     def test_3routes(self):
-        dataset = Dataset(suffix='before_3routes')
-        dataout = Dataset(suffix='after_3routes')   # TODO: this dataset is probably not post-solution, check it
+        dataset = Dataset(suffix='after_3routes')
 
         xopt = np.array([0, 3, 2, 2, 3, 0, 0, 321, 214, 244, 366, 0])
         fopt = -1.9417e+04
 
-        generate_outputs(xopt, fopt, dataset)
+        outputs = generate_outputs(xopt, fopt, dataset)
 
-        self.compare(dataset, dataout)
+        self.compare(outputs, dataset.outputs)
 
 
 if __name__ == "__main__":
