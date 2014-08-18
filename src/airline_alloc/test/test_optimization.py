@@ -352,16 +352,16 @@ class OutputTestCase(unittest.TestCase):
     def compare(self, dataset1, dataset2):
         # check that the dataset matches the output dataset
 
-        self.assertTrue(np.allclose(dataset1.outputs.Cost,    dataset2.outputs.Cost),
+        self.assertTrue(np.allclose(dataset1.outputs.Cost, dataset2.outputs.Cost),
             msg='\n' + str(dataset1.outputs.Cost) + '\n' + str(dataset2.outputs.Cost))
 
-        self.assertTrue(np.allclose(dataset1.coefficients.PPNM,  dataset2.coefficients.PPNM),
+        self.assertTrue(np.allclose(dataset1.coefficients.PPNM, dataset2.coefficients.PPNM),
             msg='\n' + str(dataset1.coefficients.PPNM) + '\n' + str(dataset2.coefficients.PPNM))
 
-        self.assertTrue(np.allclose(dataset1.coefficients.Profit,       dataset2.coefficients.Profit),
+        self.assertTrue(np.allclose(dataset1.coefficients.Profit, dataset2.coefficients.Profit),
             msg='\n' + str(dataset1.coefficients.Profit) + '\n' + str(dataset2.coefficients.Profit))
 
-        self.assertTrue(np.allclose(dataset1.coefficients.Info,       dataset2.coefficients.Info),
+        self.assertTrue(np.allclose(dataset1.coefficients.Info, dataset2.coefficients.Info),
             msg='\n' + str(dataset1.coefficients.Info) + '\n' + str(dataset2.coefficients.Info))
 
         # TODO: compare Trips, FleetUsed, Fuel, Doc, BlockTime, Nox, Maxpax, Pax, Miles

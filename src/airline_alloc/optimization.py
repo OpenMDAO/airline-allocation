@@ -524,18 +524,17 @@ def generate_outputs(xopt, fopt, data):
     aa = np.where(np.abs(x_hat - 0.) < 1e-06)[0]
     x_hat[aa] = 0
 
-    pax = xopt[KJ+1:KJ*2]
+    pax = xopt[KJ:KJ*2]             # passenger design variable
     bb = np.where(np.abs(pax - 0.) < 1e-06)[0]
     pax[bb] = 0
 
     RVector   = data.inputs.RVector
-    kk        = data.inputs.kk
 
     detailtrips = np.zeros((K, J))
     pax_rep     = np.zeros((K, J))
     for k in range(K):
         for j in range(J):
-            ind = (k - 1) * J + j
+            ind = k * J + j
             detailtrips[k, j] = 2*x_hat[ind]
             pax_rep[k, j] = 2*pax[ind]
 
@@ -554,46 +553,47 @@ def generate_outputs(xopt, fopt, data):
 
     for i in range(r):
         outputs.Trips     [i, 0] = np.sum(detailtrips[i, :])
-        outputs.FleetUsed [i, 0] = np.ceil(np.sum(data.coefficients.BlockTime[i, :].dot((1+data.constants.MH[i, 0])).dot(detailtrips[i, :]) + detailtrips[i, :].dot(data.inputs.TurnAround)) / 24)
-        outputs.Fuel      [i, 0] = np.sum(data.coefficients.Fuelburn[i, :].dot(detailtrips[i, :]))
-        outputs.Doc       [i, 0] = np.sum(data.coefficients.Doc[i, :].dot(detailtrips[i, :]))
-        outputs.BlockTime [i, 0] = np.sum(data.coefficients.BlockTime[i, :].dot(detailtrips[i, :]))
-        outputs.Nox       [i, 0] = np.sum(data.coefficients.Nox[i, :].dot(detailtrips[i, :]))
-        outputs.Maxpax    [i, 0] = np.sum(data.inputs.AvailPax[i, 0].dot(detailtrips[i, :]))
+        outputs.FleetUsed [i, 0] = np.ceil(np.sum(data.coefficients.BlockTime[i, :]*((1+data.constants.MH[i]))*(detailtrips[i, :]) + detailtrips[i, :]*(data.inputs.TurnAround)) / 24)
+        outputs.Fuel      [i, 0] = np.sum(data.coefficients.Fuelburn[i, :]*(detailtrips[i, :]))
+        outputs.Doc       [i, 0] = np.sum(data.coefficients.Doc[i, :]*(detailtrips[i, :]))
+        outputs.BlockTime [i, 0] = np.sum(data.coefficients.BlockTime[i, :]*(detailtrips[i, :]))
+        outputs.Nox       [i, 0] = np.sum(data.coefficients.Nox[i, :]*(detailtrips[i, :]))
+        outputs.Maxpax    [i, 0] = np.sum(data.inputs.AvailPax[i]*(detailtrips[i, :]))
         outputs.Pax       [i, 0] = np.sum(pax_rep[i, :])
-        outputs.Miles     [i, 0] = np.sum(pax_rep[i, :].dot(RVector.T))
+        outputs.Miles     [i, 0] = np.sum(pax_rep[i, :]*(RVector.T))
 
-    outputs.CostDetail  = data.coefficients.Doc.dot(detailtrips) + data.coefficients.Fuelburn.dot(data.constants.FuelCost(kk)).dot(detailtrips)
-    outputs.RevDetail   = data.outputs.TicketPrice.dot(pax_rep)
+    outputs.CostDetail  = data.coefficients.Doc*detailtrips + data.coefficients.Fuelburn*data.constants.FuelCost*detailtrips
+    outputs.RevDetail   = data.outputs.TicketPrice*pax_rep
     outputs.PaxDetail   = pax_rep
-    outputs.RevArray    = np.sum(outputs.RevDetail, 1)
-    outputs.CostArray   = np.sum(outputs.CostDetail, 1)
-    outputs.PaxArray    = np.sum(pax_rep, 1)
+    outputs.RevArray    = np.sum(outputs.RevDetail, 0)
+    outputs.CostArray   = np.sum(outputs.CostDetail, 0)
+    outputs.PaxArray    = np.sum(pax_rep, 0)
     outputs.ProfitArray = outputs.RevArray - outputs.CostArray
-    outputs.Revenue     = np.sum(outputs.RevDetail, 2)
+    outputs.Revenue     = np.sum(outputs.RevDetail, axis=1)
 
     # record a/c performance
     PPNM        = np.zeros((1, K))
     ProfitArray = outputs.ProfitArray
     profit_v    = np.sum(ProfitArray.T)
 
-    den_v = np.sum(outputs.PaxArray.dot(RVector.T))
-    PPNM  = profit_v / den_v
-    for i in range(len(PPNM)):
+    den_v = np.sum(outputs.PaxArray*RVector)
+    PPNM  = np.array(profit_v / den_v)
+    for i in range(PPNM.size-1):
         if np.isnan(PPNM[i]):
             PPNM[i] = 0
 
-    outputs.Cost   = np.sum(outputs.Doc + outputs.Fuel.dot(data.constants.FuelCost[kk]))
+    outputs.Cost   = np.sum(outputs.Doc + outputs.Fuel*(data.constants.FuelCost))
     outputs.PPNM   = PPNM
     outputs.Profit = np.sum(outputs.RevArray - outputs.CostArray)
 
     # allocation detail info
+    outputs.Info = []
     for i in range(len(RVector)):
         a = np.where(detailtrips[:, i])[0]
         info = np.array([a, detailtrips[a, i], pax_rep[a, i]])
-        data.outputs.Info[i, 0] = [info]
+        outputs.Info.append(info)
 
-    return data.outputs
+    return outputs
 
 
 if __name__ == "__main__":
@@ -634,15 +634,16 @@ if __name__ == "__main__":
         branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub,
                    ind_conCon, ind_intCon, [], [])
 
-    print 'xopt:\n', xopt
     print 'fopt:', fopt
+    print 'xopt:\n', xopt
 
     # generate outputs
     outputs = generate_outputs(xopt, fopt, data)
 
+    print
     print 'Cost:  ', outputs.Cost
     print 'PPNM:  ', outputs.PPNM
     print 'Profit:', outputs.Profit
-
-    print 'DetailTrips:', outputs.DetailTrips
-    print 'DetailPax:  ', outputs.PaxDetail
+    print
+    print 'DetailTrips:\n', outputs.DetailTrips
+    print 'DetailPax:  \n', outputs.PaxDetail
