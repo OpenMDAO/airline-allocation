@@ -1,3 +1,20 @@
+"""
+This file demonstrates the use of a linear program solver as an OpenMDAO component.
+
+Two different solvers are implemented: numpy.optimize.linprog and lpsolve
+
+As of this writing, there is a bug in linprog that results in an incorrect solution
+for some cases. This has been reported and should be fixed in due course.
+
+In the meantime it is recommended to download and install linprog from:
+
+    http://lpsolve.sourceforge.net
+
+    You will need the libraries from the appropriate 'lp_solve_*_dev' archive
+    and the python setup from the 'lp_solve_*_Python_source' archive
+
+An Airline Allocation sub-problem is used to demonstrate usage of the component.
+"""
 
 from openmdao.main.api import Component, Assembly, set_as_top
 from openmdao.main.datatypes.api import Array, Float, Bool, Int, Str
@@ -266,22 +283,20 @@ class AirlineAllocationProblem(Component):
         """ generate the objective matrix for linprog
             returns the coefficients for the integer and continuous design variables
         """
-        # currently sharing function definition with non-openmdao code
-        # ultimately this should be a proper member function
+        # sharing function definition with non-openmdao code
         return get_objective(data)
 
     def get_constraints(self, data):
         """ generate the constraint matrix/vector for linprog
         """
-        # currently sharing function definition with non-openmdao code
-        # ultimately this should be a proper member function
+        # sharing function definition with non-openmdao code
         return get_constraints(data)
 
 
 if __name__ == '__main__':
     top = set_as_top(Assembly())
     top.add('problem', AirlineAllocationProblem())
-    top.add('program', LinProg())  # LPSolve())
+    top.add('program', LPSolve())  # LinProg())
 
     top.connect('problem.f',   'program.f')
     top.connect('problem.A',   'program.A')
