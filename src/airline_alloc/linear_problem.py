@@ -6,7 +6,7 @@ Two different solvers are implemented: numpy.optimize.linprog and lpsolve
 As of this writing, there is a bug in linprog that results in an incorrect solution
 for some cases. This has been reported and should be fixed in due course.
 
-In the meantime it is recommended to download and install linprog from:
+In the meantime it is recommended to download and install lpsolve from:
 
     http://lpsolve.sourceforge.net
 
