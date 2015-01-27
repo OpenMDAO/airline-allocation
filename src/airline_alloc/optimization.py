@@ -8,6 +8,10 @@
 import numpy as np
 import copy
 
+# choose a liner program solver ('linprog' or 'lpsolve')
+# Note: as of this writing there is a bug in linprog that results in
+#       an incorrect answer, therefore 'lpsolve' is recommended until
+#       the bug is fixed (see linear_problem.py)
 solver = 'lpsolve'
 
 if solver == 'linprog':
@@ -356,9 +360,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
     Aset.append(prob)
 
     while len(Aset) > 0 and ter_crit != 2:
-        print '-------------------------------------------------------------'
         _iter = _iter + 1
-        print '_iter:', _iter
 
         # pick a subproblem
         # preference given to nodes with higher objective value
@@ -451,6 +453,7 @@ def branch_cut(f_int, f_con, A, b, Aeq, beq, lb, ub, ind_conCon, ind_intCon, ind
                 if (abs(U_best - f_best_relax) / abs(f_best_relax)) <= opt_cr:
                     ter_crit = 2
             else:
+                # FIXME: cut_plane is disabled for now due to inconsistent behavior
                 # apply cut to subproblem
                 # if Aset[Fsub_i].node != 1:
                 #     Aset[Fsub_i].A, Aset[Fsub_i].b = cut_plane(

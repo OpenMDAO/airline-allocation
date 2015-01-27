@@ -142,7 +142,7 @@ class LinearProgramTestCase(unittest.TestCase):
         """
 
         try:
-            from lpsolve55 import *
+            from lpsolve55 import lpsolve
         except ImportError:
             raise SkipTest('lpsolve is not available')
 
