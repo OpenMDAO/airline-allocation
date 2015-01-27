@@ -76,7 +76,7 @@ class ConstraintsTestCase(unittest.TestCase):
 
 
 class GomoryCutTestCase(unittest.TestCase):
-    """ test the gomotry_cut function
+    """ test the gomory_cut function
     """
 
     def test_problem(self):
@@ -313,6 +313,11 @@ class BranchCutTestCase(unittest.TestCase):
     """
 
     def test_3routes(self):
+        try:
+            from lpsolve55 import lpsolve
+        except ImportError:
+            raise SkipTest('lpsolve is not available')
+
         data = Dataset(suffix='after_3routes')
 
         # linear objective coefficients

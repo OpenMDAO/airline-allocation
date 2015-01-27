@@ -1,1 +1,15 @@
-openmdao_log.txt
+*.pyc
+*.DS_Store
+*.gz
+*.egg-info
+*~
+repo_lock/
+devenv/
+build/
+dist/
+parts/
+eggs/
+develop-eggs/
+sphinx_build/
+.coverage
+build.out

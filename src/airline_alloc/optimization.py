@@ -19,16 +19,14 @@ if solver == 'linprog':
         from scipy.optimize import linprog
     except ImportError, e:
         print "SciPy version >= 0.15.0 is required for linprog support!!"
-        exit(-1)
 elif solver == 'lpsolve':
     try:
         from lpsolve55 import *
     except ImportError:
         print 'lpsolve is not available'
-        exit(-1)
 else:
     print 'You must choose an available LP solver'
-    exit(-1)
+    exit(1)
 
 np.set_printoptions(linewidth=240)
 
