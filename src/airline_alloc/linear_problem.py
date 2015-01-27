@@ -258,7 +258,7 @@ class AirlineAllocationProblem(Component):
             np.ones((K*J, 1)) * np.inf
         ))
 
-        # indices into A matrix for continuous & integer/continuous variables
+        # indices into A matrix for continuous & mixed integer/continuous variables
         self.ind_conCon = range(2*J)
         self.ind_intCon = range(2*J, len(constraints[0])+1)
 
@@ -266,15 +266,13 @@ class AirlineAllocationProblem(Component):
         """ generate the objective matrix for linprog
             returns the coefficients for the integer and continuous design variables
         """
-        # currently sharing function definition with non-openmdao code
-        # ultimately this should be a proper member function
+        # sharing function definition with non-openmdao code
         return get_objective(data)
 
     def get_constraints(self, data):
         """ generate the constraint matrix/vector for linprog
         """
-        # currently sharing function definition with non-openmdao code
-        # ultimately this should be a proper member function
+        # sharing function definition with non-openmdao code
         return get_constraints(data)
 
 
